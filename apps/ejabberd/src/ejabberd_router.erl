@@ -226,8 +226,8 @@ do_route(OrigFrom, OrigTo, OrigPacket) ->
         {From, To, Packet} ->
             LDstDomain = To#jid.lserver,
             case mnesia:dirty_read(route, LDstDomain) of
-                [] ->
-                    ejabberd_s2s:route(From, To, Packet);
+                [] -> ?INFO_MSG("no local host found: ~p",
+                    [LDstDomain]);
                 [#route{handler=Handler}] ->
                     case Handler of
                         {apply_fun, Fun} ->

@@ -239,8 +239,6 @@ init([]) ->
     ets:new(sm_iqtable, [named_table]),
     lists:foreach(
       fun(Host) ->
-              ejabberd_hooks:add(roster_in_subscription, Host,
-                                 ejabberd_sm, check_in_subscription, 20),
               ejabberd_hooks:add(offline_message_hook, Host,
                                  ejabberd_sm, bounce_offline_message, 100),
               ejabberd_hooks:add(remove_user, Host,
@@ -370,11 +368,7 @@ do_route(From, To, Packet) ->
     end.
 
 do_route_no_resource_presence_prv(From,To,Packet,Type,Reason) ->
-	is_privacy_allow(From, To, Packet) andalso ejabberd_hooks:run_fold(
-	   roster_in_subscription,
-	   To#jid.lserver,
-	   false,
-	   [To#jid.user, To#jid.server, From, Type, Reason]).
+	is_privacy_allow(From, To, Packet).
 
 -spec do_route_no_resource_presence(binary(), #jid{}, #jid{}, tuple()) -> any().
 do_route_no_resource_presence(<<"subscribe">>, From, To, Packet) ->
@@ -436,22 +430,8 @@ broadcast_packet(From, To, Packet) ->
 %% for the target session/resource to which a stanza is addressed,
 %% or if there are no current sessions for the user.
 is_privacy_allow(From, To, Packet) ->
-    User = To#jid.user,
-    Server = To#jid.server,
-    PrivacyList = ejabberd_hooks:run_fold(privacy_get_user_list, Server,
-                                          #userlist{}, [User, Server]),
-    is_privacy_allow(From, To, Packet, PrivacyList).
+    true.
 
-%% Check if privacy rules allow this delivery
-%% Function copied from ejabberd_c2s.erl
-is_privacy_allow(From, To, Packet, PrivacyList) ->
-    User = To#jid.user,
-    Server = To#jid.server,
-    allow == ejabberd_hooks:run_fold(
-               privacy_check_packet, Server,
-               allow,
-               [User, Server, PrivacyList,
-                {From, To, Packet}, in]).
 
 route_message(From, To, Packet) ->
     LUser = To#jid.luser,

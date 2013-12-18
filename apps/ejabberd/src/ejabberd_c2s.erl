@@ -379,16 +379,11 @@ wait_for_stream({xmlstreamstart, _Name, Attrs}, StateData) ->
 				_ ->
 				    case StateData#state.resource of
 					<<>> ->
-					    RosterVersioningFeature =
-						ejabberd_hooks:run_fold(
-						  roster_get_versioning_feature,
-						  Server, [], [Server]),
 				            StreamFeatures =
 						[#xmlel{name = <<"bind">>,
 						        attrs = [{<<"xmlns">>, ?NS_BIND}]},
 						 #xmlel{name = <<"session">>,
 						        attrs = [{<<"xmlns">>, ?NS_SESSION}]}]
-					       ++ RosterVersioningFeature
 					      ++ ejabberd_hooks:run_fold(
 						   c2s_stream_features,
 						   Server,
@@ -895,11 +890,7 @@ wait_for_session({xmlstreamelement, El}, StateData) ->
 		    Res = jlib:make_result_iq_reply(El),
 		    send_element(StateData, Res),
 		    change_shaper(StateData, JID),
-		    {Fs, Ts, Pending} = ejabberd_hooks:run_fold(
-                                  roster_get_subscription_lists,
-                                  StateData#state.server,
-                                  {[], [], []},
-                                  [U, StateData#state.server]),
+		    Fs = [], Ts = [], Pending = [],
 		    LJID = jlib:jid_tolower(jlib:jid_remove_resource(JID)),
 		    Fs1 = [LJID | Fs],
 		    Ts1 = [LJID | Ts],
