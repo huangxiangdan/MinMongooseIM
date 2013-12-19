@@ -382,5 +382,15 @@
 -record(rsm_out, {count, index, first, last}).
 
 -type jid() :: #jid{}.
+-type(ljid() :: {binary(), binary(), binary()}).
 -type iq() :: #iq{}.
+
+-type broadcast() :: {broadcast, broadcast_data()}.
+
+-type broadcast_data() ::
+        {rebind, pid(), binary()} | %% ejabberd_c2s
+        {item, ljid(), mod_roster:subscription()} | %% mod_roster/mod_shared_roster
+        {exit, binary()} | %% mod_roster/mod_shared_roster
+        {privacy_list, mod_privacy:userlist(), binary()} | %% mod_privacy
+        {blocking, unblock_all | {block | unblock, [ljid()]}}. %% mod_blocking
 
