@@ -59,7 +59,8 @@ bind_tcp_ports() ->
 	Ls ->
 	    lists:foreach(
 	      fun({Port, Module, Opts}) ->
-		      case Module:socket_type() of
+		      ModuleRaw = strip_frontend(Module),
+		      case ModuleRaw:socket_type() of
 			  independent -> ok;
 			  _ ->
 			      bind_tcp_port(Port, Module, Opts)
@@ -90,6 +91,7 @@ start_listeners() ->
 	Ls ->
 	    Ls2 = lists:map(
 	        fun({Port, Module, Opts}) ->
+            ?INFO_MSG("start listener for Port(~p), Module (~p)", [Port, Module]),
 		        case start_listener(Port, Module, Opts) of
 			    {ok, _Pid} = R -> R;
 			    {error, Error} ->
@@ -113,8 +115,9 @@ report_duplicated_portips(L) ->
 
 start(Port, Module, Opts) ->
     %% Check if the module is an ejabberd listener or an independent listener
-    case Module:socket_type() of
-	independent -> Module:start_listener(Port, Opts);
+    ModuleRaw = strip_frontend(Module),
+    case ModuleRaw:socket_type() of
+	independent -> ModuleRaw:start_listener(Port, Opts);
 	_ -> start_dependent(Port, Module, Opts)
     end.
 
@@ -171,7 +174,11 @@ listen_tcp(PortIP, Module, SockOpts, Port, IPS) ->
 			catch
 			    _:_ -> []
 			end,
-	    Res = gen_tcp:listen(Port, [binary,
+	    DeliverAs = case Module of
+			    ejabberd_xmlrpc -> list;
+			    _ -> binary
+			end,
+	    Res = gen_tcp:listen(Port, [DeliverAs,
 					{packet, 0},
 					{active, false},
 					{reuseaddr, true},
@@ -213,14 +220,14 @@ parse_listener_portip(PortIP, Opts) ->
 	case add_proto(PortIP, Opts) of
 	    {P, Prot} ->
 		T = get_ip_tuple(IPOpt, IPVOpt),
-		S = inet_parse:ntoa(T),
+		S = jlib:ip_to_list(T),
 		{P, T, S, Prot};
 	    {P, T, Prot} when is_integer(P) and is_tuple(T) ->
-		S = inet_parse:ntoa(T),
+		S = jlib:ip_to_list(T),
 		{P, T, S, Prot};
-	    {P, S, Prot} when is_integer(P) and is_list(S) ->
-		[S | _] = string:tokens(S, "/"),
-		{ok, T} = inet_parse:address(S),
+	    {P, S, Prot} when is_integer(P) and is_binary(S) ->
+		[S | _] = str:tokens(S, <<"/">>),
+		{ok, T} = inet_parse:address(binary_to_list(S)),
 		{P, T, S, Prot}
 	end,
     IPV = case size(IPT) of
@@ -258,7 +265,7 @@ strip_ip_option(Opts) ->
 			Opts),
     case IPL of
 	%% Only the first ip option is considered
-	[{ip, T1} | _] when is_tuple(T1) ->
+	[{ip, T1} | _] ->
 	    {T1, OptsNoIP};
 	[] ->
 	    {no_ip_option, OptsNoIP}
@@ -281,11 +288,17 @@ accept(ListenSocket, Module, Opts) ->
 		_ ->
 		    ok
 	    end,
-	    ejabberd_socket:start(strip_frontend(Module), gen_tcp, Socket, Opts),
+      ?INFO_MSG("accept Module -> ~p",
+            [Module]),
+	    CallMod = case is_frontend(Module) of
+			  true -> ejabberd_frontend_socket;
+			  false -> ejabberd_socket
+		      end,
+	    CallMod:start(strip_frontend(Module), gen_tcp, Socket, Opts),
 	    accept(ListenSocket, Module, Opts);
 	{error, Reason} ->
-	    ?INFO_MSG("(~w) Failed TCP accept: ~w",
-		      [ListenSocket, Reason]),
+	    ?ERROR_MSG("(~w) Failed TCP accept: ~w",
+                       [ListenSocket, Reason]),
 	    accept(ListenSocket, Module, Opts)
     end.
 
@@ -327,14 +340,15 @@ start_listener2(Port, Module, Opts) ->
     %% It is only required to start the supervisor in some cases.
     %% But it doesn't hurt to attempt to start it for any listener.
     %% So, it's normal (and harmless) that in most cases this call returns: {error, {already_started, pid()}}
+    maybe_start_stun(Module),
     start_module_sup(Port, Module),
     start_listener_sup(Port, Module, Opts).
 
 start_module_sup(_Port, Module) ->
-    Proc1 = gen_mod:get_module_proc("sup", Module),
+    Proc1 = gen_mod:get_module_proc(<<"sup">>, Module),
     ChildSpec1 =
 	{Proc1,
-	 {ejabberd_tmp_sup, start_link, [Proc1, Module]},
+	 {ejabberd_tmp_sup, start_link, [Proc1, strip_frontend(Module)]},
 	 permanent,
 	 infinity,
 	 supervisor,
@@ -392,7 +406,8 @@ add_listener(PortIP, Module, Opts) ->
 		    end,
 	    Ports1 = lists:keydelete(PortIP1, 1, Ports),
 	    Ports2 = [{PortIP1, Module, Opts} | Ports1],
-	    ejabberd_config:add_local_option(listen, Ports2),
+            Ports3 = lists:map(fun transform_option/1, Ports2),
+	    ejabberd_config:add_option(listen, Ports3),
 	    ok;
 	{error, {already_started, _Pid}} ->
 	    {error, {already_started, PortIP}};
@@ -421,16 +436,29 @@ delete_listener(PortIP, Module, Opts) ->
 		    Ls
 	    end,
     Ports1 = lists:keydelete(PortIP1, 1, Ports),
-    ejabberd_config:add_local_option(listen, Ports1),
+    Ports2 = lists:map(fun transform_option/1, Ports1),
+    ejabberd_config:add_option(listen, Ports2),
     stop_listener(PortIP1, Module).
+
+
+-spec is_frontend({frontend, module} | module()) -> boolean().
+
+is_frontend({frontend, _Module}) -> true;
+is_frontend(_) -> false.
 
 %% @doc(FrontMod) -> atom()
 %% where FrontMod = atom() | {frontend, atom()}
-strip_frontend({frontend, Module}) ->
-    ?ERROR_MSG("using deprecated feature: frontend socket~n", []),
-    Module;
-strip_frontend(Module) when is_atom(Module) ->
-    Module.
+-spec strip_frontend({frontend, module()} | module()) -> module().
+
+strip_frontend({frontend, Module}) -> Module;
+strip_frontend(Module) when is_atom(Module) -> Module.
+
+-spec maybe_start_stun(module()) -> any().
+
+maybe_start_stun(ejabberd_stun) ->
+    ejabberd:start_app(p1_stun);
+maybe_start_stun(_) ->
+    ok.
 
 %%%
 %%% Check options
@@ -470,9 +498,10 @@ certfile_readable(Opts) ->
     case proplists:lookup(certfile, Opts) of
 	none -> true;
 	{certfile, Path} ->
-	    case ejabberd_config:is_file_readable(Path) of
+            PathS = binary_to_list(Path),
+	    case ejabberd_config:is_file_readable(PathS) of
 		true -> true;
-		false -> {false, Path}
+		false -> {false, PathS}
 	    end
     end.
 
@@ -486,8 +515,6 @@ get_proto(Opts) ->
 
 normalize_proto(tcp) -> tcp;
 normalize_proto(udp) -> udp;
-normalize_proto(ws)  -> ws;
-normalize_proto(wss) -> wss;
 normalize_proto(UnknownProto) ->
     ?WARNING_MSG("There is a problem in the configuration: "
 		 "~p is an unknown IP protocol. Using tcp as fallback",
@@ -500,7 +527,7 @@ socket_error(Reason, PortIP, Module, SockOpts, Port, IPS) ->
 		      "IP address not available: " ++ IPS;
 		  eaddrinuse ->
 		      "IP address and port number already used: "
-			  ++IPS++" "++integer_to_list(Port);
+			  ++binary_to_list(IPS)++" "++integer_to_list(Port);
 		  _ ->
 		      format_error(Reason)
 	      end,
@@ -515,3 +542,84 @@ format_error(Reason) ->
 	ReasonStr ->
 	    ReasonStr
     end.
+
+-define(IS_CHAR(C), (is_integer(C) and (C >= 0) and (C =< 255))).
+-define(IS_UINT(U), (is_integer(U) and (U >= 0) and (U =< 65535))).
+-define(IS_PORT(P), (is_integer(P) and (P > 0) and (P =< 65535))).
+-define(IS_TRANSPORT(T), ((T == tcp) or (T == udp))).
+
+transform_option({{Port, IP, Transport}, Mod, Opts}) ->
+    IPStr = if is_tuple(IP) ->
+                    list_to_binary(inet_parse:ntoa(IP));
+               true ->
+                    IP
+            end,
+    Opts1 = lists:map(
+              fun({ip, IPT}) when is_tuple(IPT) ->
+                      {ip, list_to_binary(inet_parse:ntoa(IP))};
+                 (tls) -> {tls, true};
+                 (ssl) -> {tls, true};
+                 (zlib) -> {zlib, true};
+                 (starttls) -> {starttls, true};
+                 (starttls_required) -> {starttls_required, true};
+                 (Opt) -> Opt
+              end, Opts),
+    Opts2 = lists:foldl(
+              fun(Opt, Acc) ->
+                      try
+                          Mod:transform_listen_option(Opt, Acc)
+                      catch error:undef ->
+                              Acc
+                      end
+              end, [], Opts1),
+    TransportOpt = if Transport == tcp -> [];
+                      true -> [{transport, Transport}]
+                   end,
+    IPOpt = if IPStr == <<"0.0.0.0">> -> [];
+               true -> [{ip, IPStr}]
+            end,
+    IPOpt ++ TransportOpt ++ [{port, Port}, {module, Mod} | Opts2];
+transform_option({{Port, Transport}, Mod, Opts})
+  when ?IS_TRANSPORT(Transport) ->
+    transform_option({{Port, {0,0,0,0}, Transport}, Mod, Opts});
+transform_option({{Port, IP}, Mod, Opts}) ->
+    transform_option({{Port, IP, tcp}, Mod, Opts});
+transform_option({Port, Mod, Opts}) ->
+    transform_option({{Port, {0,0,0,0}, tcp}, Mod, Opts});
+transform_option(Opt) ->
+    Opt.
+
+transform_options(Opts) ->
+    lists:foldl(fun transform_options/2, [], Opts).
+
+transform_options({listen, LOpts}, Opts) ->
+    [{listen, lists:map(fun transform_option/1, LOpts)} | Opts];
+transform_options(Opt, Opts) ->
+    [Opt|Opts].
+
+-type transport() :: udp | tcp.
+-type port_ip_transport() :: inet:port_number() |
+                             {inet:port_number(), transport()} |
+                             {inet:port_number(), inet:ip_address()} |
+                             {inet:port_number(), inet:ip_address(),
+                              transport()}.
+
+prepare_ip({A, B, C, D} = IP)
+  when ?IS_CHAR(A) and ?IS_CHAR(B) and ?IS_CHAR(C) and ?IS_CHAR(D) ->
+    IP;
+prepare_ip({A, B, C, D, E, F, G, H} = IP)
+  when ?IS_UINT(A) and ?IS_UINT(B) and ?IS_UINT(C) and ?IS_UINT(D)
+       and ?IS_UINT(E) and ?IS_UINT(F) and ?IS_UINT(G) and ?IS_UINT(H) ->
+    IP;
+prepare_ip(IP) when is_list(IP) ->
+    {ok, Addr} = inet_parse:address(IP),
+    Addr;
+prepare_ip(IP) when is_binary(IP) ->
+    prepare_ip(binary_to_list(IP)).
+
+prepare_mod(ejabberd_stun) ->
+    prepare_mod(stun);
+prepare_mod(stun) ->
+    stun;
+prepare_mod(Mod) when is_atom(Mod) ->
+    Mod.

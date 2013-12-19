@@ -21,6 +21,36 @@
 
 %% Load record definitions.
 -include_lib("exml/include/exml.hrl").
+-record(attr, {name,
+         label,
+         required = false,
+         default,
+         dec,
+         enc}).
+
+-record(cdata, {required = false,
+    label = '$cdata',
+    default,
+    dec,
+    enc}).
+
+-record(elem, {name,
+               xmlns = <<"">>,
+               cdata = #cdata{},
+               result,
+               attrs = [],
+               refs = []}).
+
+-record(ref, {name,
+              label,
+              min = 0,
+              max = infinity,
+              default}).
+
+-type(xmlel() :: #xmlel{}).
+-type(cdata() :: {xmlcdata, CData::binary()}).
+-type(attr() :: {Name::binary(), Value::binary()}).
+
 
 -define(NS_DISCO_ITEMS,  <<"http://jabber.org/protocol/disco#items">>).
 -define(NS_DISCO_INFO,   <<"http://jabber.org/protocol/disco#info">>).

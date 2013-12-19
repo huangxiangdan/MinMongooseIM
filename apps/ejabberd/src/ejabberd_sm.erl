@@ -52,7 +52,8 @@
          user_resources/2,
          get_session_pid/3,
          get_user_info/3,
-         get_user_ip/3
+         get_user_ip/3,
+         is_existing_resource/3
         ]).
 
 %% gen_server callbacks
@@ -544,6 +545,9 @@ check_existing_resources(LUser, LServer, LResource) ->
                  (_) -> ok
               end, SIDs)
     end.
+
+is_existing_resource(LUser, LServer, LResource) ->
+    [] /= ?SM_BACKEND:get_sessions(LUser, LServer, LResource).
 
 check_max_sessions(LUser, LServer) ->
     %% If the max number of sessions for a given is reached, we replace the

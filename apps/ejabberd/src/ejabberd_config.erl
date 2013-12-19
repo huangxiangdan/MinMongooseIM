@@ -29,7 +29,9 @@
 
 -export([start/0, load_file/1,
          add_global_option/2, add_local_option/2,
-         get_global_option/1, get_local_option/1]).
+         get_global_option/1, get_global_option/2, get_local_option/1, 
+         get_local_option/2, get_local_option/3,
+         get_option/2, get_option/3, add_option/2]).
 -export([get_vh_by_auth_method/1]).
 -export([is_file_readable/1]).
 
@@ -465,6 +467,15 @@ process_host_term(Term, Host, State) ->
             add_option({Opt, Host}, Val, State)
     end.
 
+
+add_option(Opt, Val) when is_atom(Opt) ->
+    add_option({Opt, global}, Val);
+add_option(Opt, Val) ->
+    mnesia:transaction(fun() ->
+             mnesia:write(#local_config{key = Opt,
+                value = Val})
+           end).
+
 add_option(Opt, Val, State) ->
     Table = case Opt of
                 hosts ->
@@ -580,13 +591,91 @@ get_global_option(Opt) ->
             undefined
     end.
 
+get_global_option(Opt, F) ->
+    get_option(Opt, F, undefined).
+
+get_global_option(Opt, F, Default) ->
+    get_option(Opt, F, Default).
+
 get_local_option(Opt) ->
     case ets:lookup(local_config, Opt) of
-        [#local_config{value = Val}] ->
-            Val;
-        _ ->
-            undefined
+      [#local_config{value = Val}] ->
+        Val;
+      _ -> 
+        undefined
     end.
+
+get_local_option(Opt, F) ->
+    get_option(Opt, F, undefined).
+
+get_local_option(Opt, F, Default) ->
+    get_option(Opt, F, Default).
+
+get_option(Opt, F) ->
+    get_option(Opt, F, undefined).
+
+get_option(Opt, F, Default) when is_atom(Opt) ->
+    get_option({Opt, global}, F, Default);
+get_option(Opt, F, Default) ->
+    case Opt of
+        {O, global} when is_atom(O) -> ok;
+        {O, H} when is_atom(O), is_binary(H) -> ok;
+        _ -> ?WARNING_MSG("Option ~p has invalid (outdated?) format. "
+                          "This is likely a bug", [Opt])
+    end,
+    case ets:lookup(local_config, Opt) of
+  [#local_config{value = Val}] ->
+      prepare_opt_val(Opt, Val, F, Default);
+        _ ->
+            case Opt of
+                {Key, Host} when Host /= global ->
+                    get_option({Key, global}, F, Default);
+                _ ->
+                    Default
+            end
+    end.
+
+prepare_opt_val(Opt, Val, F, Default) ->
+    Res = case F of
+              {Mod, Fun} ->
+                  catch Mod:Fun(Val);
+              _ ->
+                  catch F(Val)
+          end,
+    case Res of
+        {'EXIT', _} ->
+            ?INFO_MSG("Configuration problem:~n"
+                      "** Option: ~s~n"
+                      "** Invalid value: ~s~n"
+                      "** Using as fallback: ~s",
+                      [format_term(Opt),
+                       format_term(Val),
+                       format_term(Default)]),
+            Default;
+        _ ->
+            Res
+    end.
+
+format_term(Bin) when is_binary(Bin) ->
+    io_lib:format("\"~s\"", [Bin]);
+format_term(S) when is_list(S), S /= [] ->
+    case lists:all(fun(C) -> (C>=0) and (C=<255) end, S) of
+        true ->
+            io_lib:format("\"~s\"", [S]);
+        false ->
+            io_lib:format("~p", [binary_to_strings(S)])
+    end;
+format_term(T) ->
+    io_lib:format("~p", [binary_to_strings(T)]).
+
+binary_to_strings(B) when is_binary(B) ->
+    binary_to_list(B);
+binary_to_strings([H|T]) ->
+    [binary_to_strings(H)|binary_to_strings(T)];
+binary_to_strings(T) when is_tuple(T) ->
+    list_to_tuple(binary_to_strings(tuple_to_list(T)));
+binary_to_strings(T) ->
+    T.
 
 %% Return the list of hosts handled by a given module
 get_vh_by_auth_method(AuthMethod) ->
