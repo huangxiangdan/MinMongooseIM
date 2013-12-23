@@ -21,6 +21,10 @@
 -define(PRINT(Format, Args), io:format(Format, Args)).
 
 -ifdef(LAGER).
+-else.
+-define(LAGER, true).
+-endif.
+-ifdef(LAGER).
 -compile([{parse_transform, lager_transform}]).
 
 -define(DEBUG(Format, Args),

@@ -48,3 +48,8 @@
 -type scram() :: #scram{}.
 
 -define(SCRAM_DEFAULT_ITERATION_COUNT, 4096).
+
+-ifdef(LAGER).
+-else.
+-define(LAGER, true).
+-endif.
