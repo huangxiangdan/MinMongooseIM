@@ -5,7 +5,7 @@
 %%% Created : 24 Nov 2002 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2011   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2013   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -23,7 +23,9 @@
 %%% 02111-1307 USA
 %%%
 %%%----------------------------------------------------------------------
+
 -module(ejabberd_sm).
+
 -author('alexey@process-one.net').
 
 -behaviour(gen_server).
@@ -57,13 +59,19 @@
 	]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+-export([init/1, handle_call/3, handle_cast/2,
+	 handle_info/2, terminate/2, code_change/3]).
 
 -include("ejabberd.hrl").
+-include("logger.hrl").
+
 -include("jlib.hrl").
+
 -include("ejabberd_commands.hrl").
 
+% -include("mod_privacy.hrl").
+
+-record(session, {sid, usr, us, priority, info}).
 -record(session_counter, {vhost, count}).
 -record(state, {}).
 
@@ -93,11 +101,10 @@ start_link() ->
 
 route(From, To, Packet) ->
     case catch do_route(From, To, Packet) of
-        {'EXIT', Reason} ->
-            ?ERROR_MSG("~p~nwhen processing: ~p",
-                       [Reason, {From, To, Packet}]);
-        _ ->
-            ok
+      {'EXIT', Reason} ->
+	  ?ERROR_MSG("~p~nwhen processing: ~p",
+		     [Reason, {From, To, Packet}]);
+      _ -> ok
     end.
 
 -spec open_session(sid(), binary(), binary(), binary(), info()) -> ok.
@@ -317,10 +324,12 @@ init([]) ->
     ets:new(sm_iqtable, [named_table]),
     lists:foreach(
       fun(Host) ->
-              ejabberd_hooks:add(offline_message_hook, Host,
-                                 ejabberd_sm, bounce_offline_message, 100),
-              ejabberd_hooks:add(remove_user, Host,
-                                 ejabberd_sm, disconnect_removed_user, 100)
+	      ejabberd_hooks:add(roster_in_subscription, Host,
+				 ejabberd_sm, check_in_subscription, 20),
+	      ejabberd_hooks:add(offline_message_hook, Host,
+				 ejabberd_sm, bounce_offline_message, 100),
+	      ejabberd_hooks:add(remove_user, Host,
+				 ejabberd_sm, disconnect_removed_user, 100)
       end, ?MYHOSTS),
     ejabberd_commands:register_commands(commands()),
 
@@ -336,8 +345,7 @@ init([]) ->
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    Reply = ok, {reply, Reply, State}.
 
 %%--------------------------------------------------------------------
 %% Function: handle_cast(Msg, State) -> {noreply, State} |
@@ -345,8 +353,7 @@ handle_call(_Request, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
+handle_cast(_Msg, State) -> {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% Function: handle_info(Info, State) -> {noreply, State} |
@@ -356,11 +363,11 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({route, From, To, Packet}, State) ->
     case catch do_route(From, To, Packet) of
-        {'EXIT', Reason} ->
-            ?ERROR_MSG("~p~nwhen processing: ~p",
-                       [Reason, {From, To, Packet}]);
-        _ ->
-            ok
+	{'EXIT', Reason} ->
+	    ?ERROR_MSG("~p~nwhen processing: ~p",
+		       [Reason, {From, To, Packet}]);
+	_ ->
+	    ok
     end,
     {noreply, State};
 handle_info({mnesia_system_event, {mnesia_down, Node}}, State) ->
@@ -369,20 +376,22 @@ handle_info({mnesia_system_event, {mnesia_down, Node}}, State) ->
 handle_info({register_iq_handler, Host, XMLNS, Module, Function}, State) ->
     ets:insert(sm_iqtable, {{XMLNS, Host}, Module, Function}),
     {noreply, State};
-handle_info({register_iq_handler, Host, XMLNS, Module, Function, Opts}, State) ->
-    ets:insert(sm_iqtable, {{XMLNS, Host}, Module, Function, Opts}),
+handle_info({register_iq_handler, Host, XMLNS, Module,
+	     Function, Opts},
+	    State) ->
+    ets:insert(sm_iqtable,
+	       {{XMLNS, Host}, Module, Function, Opts}),
     {noreply, State};
-handle_info({unregister_iq_handler, Host, XMLNS}, State) ->
+handle_info({unregister_iq_handler, Host, XMLNS},
+	    State) ->
     case ets:lookup(sm_iqtable, {XMLNS, Host}) of
-        [{_, Module, Function, Opts}] ->
-            gen_iq_handler:stop_iq_handler(Module, Function, Opts);
-        _ ->
-            ok
+      [{_, Module, Function, Opts}] ->
+	  gen_iq_handler:stop_iq_handler(Module, Function, Opts);
+      _ -> ok
     end,
     ets:delete(sm_iqtable, {XMLNS, Host}),
     {noreply, State};
-handle_info(_Info, State) ->
-    {noreply, State}.
+handle_info(_Info, State) -> {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% Function: terminate(Reason, State) -> void()
@@ -399,8 +408,7 @@ terminate(_Reason, _State) ->
 %% Func: code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% Description: Convert process state when code is changed
 %%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 %%--------------------------------------------------------------------
 %%% Internal functions

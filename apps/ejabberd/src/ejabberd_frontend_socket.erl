@@ -32,25 +32,25 @@
 
 %% API
 -export([start/4,
-   start_link/5,
-   %connect/3,
-   starttls/2,
-   starttls/3,
-   compress/1,
-   compress/2,
-   reset_stream/1,
-   send/2,
-   change_shaper/2,
-   monitor/1,
-   get_sockmod/1,
-   get_peer_certificate/1,
-   get_verify_result/1,
-   close/1,
-   sockname/1, peername/1]).
+	 start_link/5,
+	 %connect/3,
+	 starttls/2,
+	 starttls/3,
+	 compress/1,
+	 compress/2,
+	 reset_stream/1,
+	 send/2,
+	 change_shaper/2,
+	 monitor/1,
+	 get_sockmod/1,
+	 get_peer_certificate/1,
+	 get_verify_result/1,
+	 close/1,
+	 sockname/1, peername/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2,
-   handle_info/2, terminate/2, code_change/3]).
+	 handle_info/2, terminate/2, code_change/3]).
 
 -record(state, {sockmod, socket, receiver}).
 
@@ -65,34 +65,34 @@
 %%--------------------------------------------------------------------
 start_link(Module, SockMod, Socket, Opts, Receiver) ->
     gen_server:start_link(?MODULE,
-        [Module, SockMod, Socket, Opts, Receiver], []).
+			  [Module, SockMod, Socket, Opts, Receiver], []).
 
 start(Module, SockMod, Socket, Opts) ->
     case Module:socket_type() of
       xml_stream ->
-    MaxStanzaSize = case lists:keysearch(max_stanza_size, 1,
-                 Opts)
-            of
-          {value, {_, Size}} -> Size;
-          _ -> infinity
-        end,
-    Receiver = ejabberd_receiver:start(Socket, SockMod,
-               none, MaxStanzaSize),
-    case SockMod:controlling_process(Socket, Receiver) of
-      ok -> ok;
-      {error, _Reason} -> SockMod:close(Socket)
-    end,
-    supervisor:start_child(ejabberd_frontend_socket_sup,
-         [Module, SockMod, Socket, Opts, Receiver]);
+	  MaxStanzaSize = case lists:keysearch(max_stanza_size, 1,
+					       Opts)
+			      of
+			    {value, {_, Size}} -> Size;
+			    _ -> infinity
+			  end,
+	  Receiver = ejabberd_receiver:start(Socket, SockMod,
+					     none, MaxStanzaSize),
+	  case SockMod:controlling_process(Socket, Receiver) of
+	    ok -> ok;
+	    {error, _Reason} -> SockMod:close(Socket)
+	  end,
+	  supervisor:start_child(ejabberd_frontend_socket_sup,
+				 [Module, SockMod, Socket, Opts, Receiver]);
       raw ->
-    %{ok, Pid} = Module:start({SockMod, Socket}, Opts),
-    %case SockMod:controlling_process(Socket, Pid) of
-    %    ok ->
-    %        ok;
-    %    {error, _Reason} ->
-    %        SockMod:close(Socket)
-    %end
-    todo
+	  %{ok, Pid} = Module:start({SockMod, Socket}, Opts),
+	  %case SockMod:controlling_process(Socket, Pid) of
+	  %    ok ->
+	  %        ok;
+	  %    {error, _Reason} ->
+	  %        SockMod:close(Socket)
+	  %end
+	  todo
     end.
 
 starttls(FsmRef, _TLSOpts) ->
@@ -154,11 +154,11 @@ init([Module, SockMod, Socket, Opts, Receiver]) ->
     Node = ejabberd_node_groups:get_closest_node(backend),
     {SockMod2, Socket2} = check_starttls(SockMod, Socket, Receiver, Opts),
     {ok, Pid} =
-  rpc:call(Node, Module, start, [{?MODULE, self()}, Opts]),
+	rpc:call(Node, Module, start, [{?MODULE, self()}, Opts]),
     ejabberd_receiver:become_controller(Receiver, Pid),
     {ok, #state{sockmod = SockMod2,
-    socket = Socket2,
-    receiver = Receiver}}.
+		socket = Socket2,
+		receiver = Receiver}}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -180,7 +180,7 @@ handle_call({starttls, TLSOpts, Data}, _From, State) ->
     {ok, TLSSocket} = p1_tls:tcp_to_tls(State#state.socket, TLSOpts),
     ejabberd_receiver:starttls(State#state.receiver, TLSSocket),
     catch (State#state.sockmod):send(
-      State#state.socket, Data),
+	    State#state.socket, Data),
     Reply = ok,
     {reply, Reply,
      State#state{socket = TLSSocket, sockmod = p1_tls},
@@ -203,7 +203,7 @@ handle_call({send, Data}, _From, State) ->
     {reply, Reply, State, ?HIBERNATE_TIMEOUT};
 handle_call({change_shaper, Shaper}, _From, State) ->
     ejabberd_receiver:change_shaper(State#state.receiver,
-            Shaper),
+				    Shaper),
     Reply = ok,
     {reply, Reply, State, ?HIBERNATE_TIMEOUT};
 handle_call(get_sockmod, _From, State) ->
@@ -222,19 +222,19 @@ handle_call(close, _From, State) ->
 handle_call(sockname, _From, State) ->
     #state{sockmod = SockMod, socket = Socket} = State,
     Reply =
-  case SockMod of
-      gen_tcp ->
-    inet:sockname(Socket);
-      _ ->
-    SockMod:sockname(Socket)
-  end,
+	case SockMod of
+	    gen_tcp ->
+		inet:sockname(Socket);
+	    _ ->
+		SockMod:sockname(Socket)
+	end,
     {reply, Reply, State, ?HIBERNATE_TIMEOUT};
 handle_call(peername, _From, State) ->
     #state{sockmod = SockMod, socket = Socket} = State,
     Reply = case SockMod of
-        gen_tcp -> inet:peername(Socket);
-        _ -> SockMod:peername(Socket)
-      end,
+	      gen_tcp -> inet:peername(Socket);
+	      _ -> SockMod:peername(Socket)
+	    end,
     {reply, Reply, State, ?HIBERNATE_TIMEOUT};
 handle_call(_Request, _From, State) ->
     Reply = ok, {reply, Reply, State, ?HIBERNATE_TIMEOUT}.
@@ -256,7 +256,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(timeout, State) ->
     proc_lib:hibernate(gen_server, enter_loop,
-           [?MODULE, [], State]),
+		       [?MODULE, [], State]),
     {noreply, State, ?HIBERNATE_TIMEOUT};
 handle_info(_Info, State) ->
     {noreply, State, ?HIBERNATE_TIMEOUT}.
@@ -282,13 +282,13 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 check_starttls(SockMod, Socket, Receiver, Opts) ->
     TLSEnabled = proplists:get_bool(tls, Opts),
     TLSOpts = lists:filter(fun({certfile, _}) -> true;
-            (_) -> false
-         end, Opts),
+			      (_) -> false
+			   end, Opts),
     if
-  TLSEnabled ->
-      {ok, TLSSocket} = p1_tls:tcp_to_tls(Socket, TLSOpts),
-      ejabberd_receiver:starttls(Receiver, TLSSocket),
-      {p1_tls, TLSSocket};
-  true ->
-      {SockMod, Socket}
+	TLSEnabled ->
+	    {ok, TLSSocket} = p1_tls:tcp_to_tls(Socket, TLSOpts),
+	    ejabberd_receiver:starttls(Receiver, TLSSocket),
+	    {p1_tls, TLSSocket};
+	true ->
+	    {SockMod, Socket}
     end.

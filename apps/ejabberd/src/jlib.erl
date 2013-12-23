@@ -33,25 +33,25 @@
                            integer_to_binary/1]}).
 
 -export([make_result_iq_reply/1, make_error_reply/3,
-   make_error_reply/2, make_error_element/2,
-   make_correct_from_to_attrs/3, replace_from_to_attrs/3,
-   replace_from_to/3, replace_from_attrs/2, replace_from/2,
-   remove_attr/2, make_jid/3, make_jid/1, binary_to_jid/1,
-   jid_to_binary/1, is_nodename/1, tolower/1, nodeprep/1,
-   nameprep/1, resourceprep/1, jid_tolower/1,
-   jid_remove_resource/1, jid_replace_resource/2,
-   get_iq_namespace/1, iq_query_info/1,
-   iq_query_or_response_info/1, is_iq_request_type/1,
-   iq_to_xml/1, parse_xdata_submit/1, timestamp_to_iso/1,
-   timestamp_to_iso/2, timestamp_to_xml/4,
-   timestamp_to_xml/1, now_to_utc_string/1,
-   now_to_local_string/1, datetime_string_to_timestamp/1,
-   decode_base64/1, encode_base64/1, ip_to_list/1,
-   rsm_encode/1, rsm_encode/2, rsm_decode/1,
-   binary_to_integer/1, binary_to_integer/2,
-   integer_to_binary/1, integer_to_binary/2,
-   atom_to_binary/1, binary_to_atom/1, tuple_to_binary/1,
-   l2i/1, i2l/1, i2l/2]).
+	 make_error_reply/2, make_error_element/2,
+	 make_correct_from_to_attrs/3, replace_from_to_attrs/3,
+	 replace_from_to/3, replace_from_attrs/2, replace_from/2,
+	 remove_attr/2, make_jid/3, make_jid/1, binary_to_jid/1,
+	 jid_to_binary/1, is_nodename/1, tolower/1, nodeprep/1,
+	 nameprep/1, resourceprep/1, jid_tolower/1,
+	 jid_remove_resource/1, jid_replace_resource/2,
+	 get_iq_namespace/1, iq_query_info/1,
+	 iq_query_or_response_info/1, is_iq_request_type/1,
+	 iq_to_xml/1, parse_xdata_submit/1, timestamp_to_iso/1,
+	 timestamp_to_iso/2, timestamp_to_xml/4,
+	 timestamp_to_xml/1, now_to_utc_string/1,
+	 now_to_local_string/1, datetime_string_to_timestamp/1,
+	 decode_base64/1, encode_base64/1, ip_to_list/1,
+	 rsm_encode/1, rsm_encode/2, rsm_decode/1,
+	 binary_to_integer/1, binary_to_integer/2,
+	 integer_to_binary/1, integer_to_binary/2,
+	 atom_to_binary/1, binary_to_atom/1, tuple_to_binary/1,
+	 l2i/1, i2l/1, i2l/2]).
 
 %% TODO: Remove once XEP-0091 is Obsolete
 %% TODO: Remove once XEP-0091 is Obsolete
@@ -66,10 +66,10 @@
 -spec make_result_iq_reply(xmlel()) -> xmlel().
 
 make_result_iq_reply(#xmlel{name = Name, attrs = Attrs,
-          children = SubTags}) ->
+			    children = SubTags}) ->
     NewAttrs = make_result_iq_reply_attrs(Attrs),
     #xmlel{name = Name, attrs = NewAttrs,
-     children = SubTags}.
+	   children = SubTags}.
 
 -spec make_result_iq_reply_attrs([attr()]) -> [attr()].
 
@@ -79,13 +79,13 @@ make_result_iq_reply_attrs(Attrs) ->
     Attrs1 = lists:keydelete(<<"to">>, 1, Attrs),
     Attrs2 = lists:keydelete(<<"from">>, 1, Attrs1),
     Attrs3 = case To of
-         {value, ToVal} -> [{<<"from">>, ToVal} | Attrs2];
-         _ -> Attrs2
-       end,
+	       {value, ToVal} -> [{<<"from">>, ToVal} | Attrs2];
+	       _ -> Attrs2
+	     end,
     Attrs4 = case From of
-         {value, FromVal} -> [{<<"to">>, FromVal} | Attrs3];
-         _ -> Attrs3
-       end,
+	       {value, FromVal} -> [{<<"to">>, FromVal} | Attrs3];
+	       _ -> Attrs3
+	     end,
     Attrs5 = lists:keydelete(<<"type">>, 1, Attrs4),
     Attrs6 = [{<<"type">>, <<"result">>} | Attrs5],
     Attrs6.
@@ -93,24 +93,24 @@ make_result_iq_reply_attrs(Attrs) ->
 -spec make_error_reply(xmlel(), binary(), binary()) -> xmlel().
 
 make_error_reply(#xmlel{name = Name, attrs = Attrs,
-      children = SubTags},
-     Code, Desc) ->
+			children = SubTags},
+		 Code, Desc) ->
     NewAttrs = make_error_reply_attrs(Attrs),
     #xmlel{name = Name, attrs = NewAttrs,
-     children =
-         SubTags ++
-     [#xmlel{name = <<"error">>,
-       attrs = [{<<"code">>, Code}],
-       children = [{xmlcdata, Desc}]}]}.
+	   children =
+	       SubTags ++
+		 [#xmlel{name = <<"error">>,
+			 attrs = [{<<"code">>, Code}],
+			 children = [{xmlcdata, Desc}]}]}.
 
 -spec make_error_reply(xmlel(), xmlel()) -> xmlel().
 
 make_error_reply(#xmlel{name = Name, attrs = Attrs,
-      children = SubTags},
-     Error) ->
+			children = SubTags},
+		 Error) ->
     NewAttrs = make_error_reply_attrs(Attrs),
     #xmlel{name = Name, attrs = NewAttrs,
-     children = SubTags ++ [Error]}.
+	   children = SubTags ++ [Error]}.
 
 -spec make_error_reply_attrs([attr()]) -> [attr()].
 
@@ -120,13 +120,13 @@ make_error_reply_attrs(Attrs) ->
     Attrs1 = lists:keydelete(<<"to">>, 1, Attrs),
     Attrs2 = lists:keydelete(<<"from">>, 1, Attrs1),
     Attrs3 = case To of
-         {value, ToVal} -> [{<<"from">>, ToVal} | Attrs2];
-         _ -> Attrs2
-       end,
+	       {value, ToVal} -> [{<<"from">>, ToVal} | Attrs2];
+	       _ -> Attrs2
+	     end,
     Attrs4 = case From of
-         {value, FromVal} -> [{<<"to">>, FromVal} | Attrs3];
-         _ -> Attrs3
-       end,
+	       {value, FromVal} -> [{<<"to">>, FromVal} | Attrs3];
+	       _ -> Attrs3
+	     end,
     Attrs5 = lists:keydelete(<<"type">>, 1, Attrs4),
     Attrs6 = [{<<"type">>, <<"error">>} | Attrs5],
     Attrs6.
@@ -135,16 +135,16 @@ make_error_reply_attrs(Attrs) ->
 
 make_error_element(Code, Desc) ->
     #xmlel{name = <<"error">>, attrs = [{<<"code">>, Code}],
-     children = [{xmlcdata, Desc}]}.
+	   children = [{xmlcdata, Desc}]}.
 
 -spec make_correct_from_to_attrs(binary(), binary(), [attr()]) -> [attr()].
 
 make_correct_from_to_attrs(From, To, Attrs) ->
     Attrs1 = lists:keydelete(<<"from">>, 1, Attrs),
     Attrs2 = case xml:get_attr(<<"to">>, Attrs) of
-         {value, _} -> Attrs1;
-         _ -> [{<<"to">>, To} | Attrs1]
-       end,
+	       {value, _} -> Attrs1;
+	       _ -> [{<<"to">>, To} | Attrs1]
+	     end,
     Attrs3 = [{<<"from">>, From} | Attrs2],
     Attrs3.
 
@@ -160,10 +160,10 @@ replace_from_to_attrs(From, To, Attrs) ->
 -spec replace_from_to(jid(), jid(), xmlel()) -> xmlel().
 
 replace_from_to(From, To,
-    #xmlel{name = Name, attrs = Attrs, children = Els}) ->
+		#xmlel{name = Name, attrs = Attrs, children = Els}) ->
     NewAttrs =
-  replace_from_to_attrs(jlib:jid_to_binary(From),
-            jlib:jid_to_binary(To), Attrs),
+	replace_from_to_attrs(jlib:jid_to_binary(From),
+			      jlib:jid_to_binary(To), Attrs),
     #xmlel{name = Name, attrs = NewAttrs, children = Els}.
 
 -spec replace_from_attrs(binary(), [attr()]) -> [attr()].
@@ -175,15 +175,15 @@ replace_from_attrs(From, Attrs) ->
 -spec replace_from(jid(), xmlel()) -> xmlel().
 
 replace_from(From,
-       #xmlel{name = Name, attrs = Attrs, children = Els}) ->
+	     #xmlel{name = Name, attrs = Attrs, children = Els}) ->
     NewAttrs = replace_from_attrs(jlib:jid_to_binary(From),
-          Attrs),
+				  Attrs),
     #xmlel{name = Name, attrs = NewAttrs, children = Els}.
 
 -spec remove_attr(binary(), xmlel()) -> xmlel().
 
 remove_attr(Attr,
-      #xmlel{name = Name, attrs = Attrs, children = Els}) ->
+	    #xmlel{name = Name, attrs = Attrs, children = Els}) ->
     NewAttrs = lists:keydelete(Attr, 1, Attrs),
     #xmlel{name = Name, attrs = NewAttrs, children = Els}.
 
@@ -193,17 +193,17 @@ make_jid(User, Server, Resource) ->
     case nodeprep(User) of
       error -> error;
       LUser ->
-    case nameprep(Server) of
-      error -> error;
-      LServer ->
-    case resourceprep(Resource) of
-      error -> error;
-      LResource ->
-          #jid{user = User, server = Server, resource = Resource,
-         luser = LUser, lserver = LServer,
-         lresource = LResource}
-    end
-    end
+	  case nameprep(Server) of
+	    error -> error;
+	    LServer ->
+		case resourceprep(Resource) of
+		  error -> error;
+		  LResource ->
+		      #jid{user = User, server = Server, resource = Resource,
+			   luser = LUser, lserver = LServer,
+			   lresource = LResource}
+		end
+	  end
     end.
 
 -spec make_jid({binary(), binary(), binary()}) -> jid() | error.
@@ -248,21 +248,21 @@ binary_to_jid3([], N, S, R) ->
 -spec jid_to_binary(jid() | ljid()) -> binary().
 
 jid_to_binary(#jid{user = User, server = Server,
-       resource = Resource}) ->
+		   resource = Resource}) ->
     jid_to_binary({User, Server, Resource});
 jid_to_binary({N, S, R}) ->
     Node = iolist_to_binary(N),
     Server = iolist_to_binary(S),
     Resource = iolist_to_binary(R),
     S1 = case Node of
-     <<"">> -> <<"">>;
-     _ -> <<Node/binary, "@">>
-   end,
+	   <<"">> -> <<"">>;
+	   _ -> <<Node/binary, "@">>
+	 end,
     S2 = <<S1/binary, Server/binary>>,
     S3 = case Resource of
-     <<"">> -> S2;
-     _ -> <<S2/binary, "/", Resource/binary>>
-   end,
+	   <<"">> -> S2;
+	   _ -> <<S2/binary, "/", Resource/binary>>
+	 end,
     S3.
 
 -spec is_nodename(binary()) -> boolean().
@@ -277,9 +277,9 @@ is_nodename(Node) ->
 %    C.
 
 -define(LOWER(Char),
-  if Char >= $A, Char =< $Z -> Char + 32;
-     true -> Char
-  end).
+	if Char >= $A, Char =< $Z -> Char + 32;
+	   true -> Char
+	end).
 
 %tolower(S) ->
 %    lists:map(fun tolower_c/1, S).
@@ -336,20 +336,20 @@ resourceprep(_) -> error.
 -spec jid_tolower(jid() | ljid()) -> error | ljid().
 
 jid_tolower(#jid{luser = U, lserver = S,
-     lresource = R}) ->
+		 lresource = R}) ->
     {U, S, R};
 jid_tolower({U, S, R}) ->
     case nodeprep(U) of
       error -> error;
       LUser ->
-    case nameprep(S) of
-      error -> error;
-      LServer ->
-    case resourceprep(R) of
-      error -> error;
-      LResource -> {LUser, LServer, LResource}
-    end
-    end
+	  case nameprep(S) of
+	    error -> error;
+	    LServer ->
+		case resourceprep(R) of
+		  error -> error;
+		  LResource -> {LUser, LServer, LResource}
+		end
+	  end
     end.
 
 -spec jid_remove_resource(jid()) -> jid();
@@ -365,7 +365,7 @@ jid_replace_resource(JID, Resource) ->
     case resourceprep(Resource) of
       error -> error;
       LResource ->
-    JID#jid{resource = Resource, lresource = LResource}
+	  JID#jid{resource = Resource, lresource = LResource}
     end.
 
 -spec get_iq_namespace(xmlel()) -> binary().
@@ -377,9 +377,22 @@ get_iq_namespace(#xmlel{name = <<"iq">>, children = Els}) ->
     end;
 get_iq_namespace(_) -> <<"">>.
 
+%%
+% -spec(iq_query_info/1 ::
+% (
+%   Xmlel :: xmlel())
+%     -> iq_request() | 'reply' | 'invalid' | 'not_iq'
+% ).
 
 %% @spec (xmlelement()) -> iq() | reply | invalid | not_iq
 iq_query_info(El) -> iq_info_internal(El, request).
+
+%%
+% -spec(iq_query_or_response_info/1 ::
+% (
+%   Xmlel :: xmlel())
+%     -> iq_request() | iq_reply() | 'reply' | 'invalid' | 'not_iq'
+% ).
 
 iq_query_or_response_info(El) ->
     iq_info_internal(El, any).
@@ -439,14 +452,14 @@ iq_type_to_string(error) -> <<"error">>.
 
 iq_to_xml(#iq{id = ID, type = Type, sub_el = SubEl}) ->
     if ID /= <<"">> ->
-     #xmlel{name = <<"iq">>,
-      attrs =
-          [{<<"id">>, ID}, {<<"type">>, iq_type_to_string(Type)}],
-      children = SubEl};
+	   #xmlel{name = <<"iq">>,
+		  attrs =
+		      [{<<"id">>, ID}, {<<"type">>, iq_type_to_string(Type)}],
+		  children = SubEl};
        true ->
-     #xmlel{name = <<"iq">>,
-      attrs = [{<<"type">>, iq_type_to_string(Type)}],
-      children = SubEl}
+	   #xmlel{name = <<"iq">>,
+		  attrs = [{<<"type">>, iq_type_to_string(Type)}],
+		  children = SubEl}
     end.
 
 -spec(parse_xdata_submit/1 ::
@@ -501,60 +514,65 @@ parse_xdata_values([#xmlel{name = <<"value">>, children = SubEls} | Els], Res) -
 parse_xdata_values([_ | Els], Res) ->
     parse_xdata_values(Els, Res).
 
+% -spec rsm_decode(iq() | xmlel()) -> none | rsm_in().
 
 rsm_decode(#iq{sub_el = SubEl}) -> rsm_decode(SubEl);
 rsm_decode(#xmlel{} = SubEl) ->
     case xml:get_subtag(SubEl, <<"set">>) of
       false -> none;
       #xmlel{name = <<"set">>, children = SubEls} ->
-    lists:foldl(fun rsm_parse_element/2, #rsm_in{}, SubEls)
+	  lists:foldl(fun rsm_parse_element/2, #rsm_in{}, SubEls)
     end.
 
 rsm_parse_element(#xmlel{name = <<"max">>, attrs = []} =
-          Elem,
-      RsmIn) ->
+		      Elem,
+		  RsmIn) ->
     CountStr = xml:get_tag_cdata(Elem),
     {Count, _} = str:to_integer(CountStr),
     RsmIn#rsm_in{max = Count};
 rsm_parse_element(#xmlel{name = <<"before">>,
-       attrs = []} =
-          Elem,
-      RsmIn) ->
+			 attrs = []} =
+		      Elem,
+		  RsmIn) ->
     UID = xml:get_tag_cdata(Elem),
     RsmIn#rsm_in{direction = before, id = UID};
 rsm_parse_element(#xmlel{name = <<"after">>,
-       attrs = []} =
-          Elem,
-      RsmIn) ->
+			 attrs = []} =
+		      Elem,
+		  RsmIn) ->
     UID = xml:get_tag_cdata(Elem),
     RsmIn#rsm_in{direction = aft, id = UID};
 rsm_parse_element(#xmlel{name = <<"index">>,
-       attrs = []} =
-          Elem,
-      RsmIn) ->
+			 attrs = []} =
+		      Elem,
+		  RsmIn) ->
     IndexStr = xml:get_tag_cdata(Elem),
     {Index, _} = str:to_integer(IndexStr),
     RsmIn#rsm_in{index = Index};
 rsm_parse_element(_, RsmIn) -> RsmIn.
 
+% -spec rsm_encode(iq(), rsm_out()) -> iq().
+
 rsm_encode(#iq{sub_el = SubEl} = IQ, RsmOut) ->
     Set = #xmlel{name = <<"set">>,
-     attrs = [{<<"xmlns">>, ?NS_RSM}],
-     children = lists:reverse(rsm_encode_out(RsmOut))},
+		 attrs = [{<<"xmlns">>, ?NS_RSM}],
+		 children = lists:reverse(rsm_encode_out(RsmOut))},
     #xmlel{name = Name, attrs = Attrs, children = SubEls} =
-  SubEl,
+	SubEl,
     New = #xmlel{name = Name, attrs = Attrs,
-     children = [Set | SubEls]},
+		 children = [Set | SubEls]},
     IQ#iq{sub_el = New}.
+
+% -spec rsm_encode(none | rsm_out()) -> [xmlel()].
 
 rsm_encode(none) -> [];
 rsm_encode(RsmOut) ->
     [#xmlel{name = <<"set">>,
-      attrs = [{<<"xmlns">>, ?NS_RSM}],
-      children = lists:reverse(rsm_encode_out(RsmOut))}].
+	    attrs = [{<<"xmlns">>, ?NS_RSM}],
+	    children = lists:reverse(rsm_encode_out(RsmOut))}].
 
 rsm_encode_out(#rsm_out{count = Count, index = Index,
-      first = First, last = Last}) ->
+			first = First, last = Last}) ->
     El = rsm_encode_first(First, Index, []),
     El2 = rsm_encode_last(Last, El),
     rsm_encode_count(Count, El2).
@@ -562,24 +580,24 @@ rsm_encode_out(#rsm_out{count = Count, index = Index,
 rsm_encode_first(undefined, undefined, Arr) -> Arr;
 rsm_encode_first(First, undefined, Arr) ->
     [#xmlel{name = <<"first">>, attrs = [],
-      children = [{xmlcdata, First}]}
+	    children = [{xmlcdata, First}]}
      | Arr];
 rsm_encode_first(First, Index, Arr) ->
     [#xmlel{name = <<"first">>,
-      attrs = [{<<"index">>, i2l(Index)}],
-      children = [{xmlcdata, First}]}
+	    attrs = [{<<"index">>, i2l(Index)}],
+	    children = [{xmlcdata, First}]}
      | Arr].
 
 rsm_encode_last(undefined, Arr) -> Arr;
 rsm_encode_last(Last, Arr) ->
     [#xmlel{name = <<"last">>, attrs = [],
-      children = [{xmlcdata, Last}]}
+	    children = [{xmlcdata, Last}]}
      | Arr].
 
 rsm_encode_count(undefined, Arr) -> Arr;
 rsm_encode_count(Count, Arr) ->
     [#xmlel{name = <<"count">>, attrs = [],
-      children = [{xmlcdata, i2l(Count)}]}
+	    children = [{xmlcdata, i2l(Count)}]}
      | Arr].
 
 -type tz() :: {binary(), {integer(), integer()}} | {integer(), integer()} | utc.
@@ -593,20 +611,20 @@ timestamp_to_iso({{Year, Month, Day},
                   {Hour, Minute, Second}},
                  Timezone) ->
     Timestamp_string =
-  lists:flatten(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0w",
-            [Year, Month, Day, Hour, Minute, Second])),
+	lists:flatten(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0w",
+				    [Year, Month, Day, Hour, Minute, Second])),
     Timezone_string = case Timezone of
-      utc -> "Z";
-      {Sign, {TZh, TZm}} ->
-          io_lib:format("~s~2..0w:~2..0w", [Sign, TZh, TZm]);
-      {TZh, TZm} ->
-          Sign = case TZh >= 0 of
-             true -> "+";
-             false -> "-"
-           end,
-          io_lib:format("~s~2..0w:~2..0w",
-            [Sign, abs(TZh), TZm])
-          end,
+			utc -> "Z";
+			{Sign, {TZh, TZm}} ->
+			    io_lib:format("~s~2..0w:~2..0w", [Sign, TZh, TZm]);
+			{TZh, TZm} ->
+			    Sign = case TZh >= 0 of
+				     true -> "+";
+				     false -> "-"
+				   end,
+			    io_lib:format("~s~2..0w:~2..0w",
+					  [Sign, abs(TZh), TZm])
+		      end,
     {iolist_to_binary(Timestamp_string), iolist_to_binary(Timezone_string)}.
 
 -spec timestamp_to_iso(calendar:datetime()) -> binary().
@@ -620,35 +638,35 @@ timestamp_to_iso({{Year, Month, Day},
 
 timestamp_to_xml(DateTime, Timezone, FromJID, Desc) ->
     {T_string, Tz_string} = timestamp_to_iso(DateTime,
-               Timezone),
+					     Timezone),
     Text = [{xmlcdata, Desc}],
     From = jlib:jid_to_binary(FromJID),
 %% TODO: Remove this function once XEP-0091 is Obsolete
     #xmlel{name = <<"delay">>,
-     attrs =
-         [{<<"xmlns">>, ?NS_DELAY}, {<<"from">>, From},
-    {<<"stamp">>, <<T_string/binary, Tz_string/binary>>}],
-     children = Text}.
+	   attrs =
+	       [{<<"xmlns">>, ?NS_DELAY}, {<<"from">>, From},
+		{<<"stamp">>, <<T_string/binary, Tz_string/binary>>}],
+	   children = Text}.
 
 -spec timestamp_to_xml(calendar:datetime()) -> xmlel().
 
 timestamp_to_xml({{Year, Month, Day},
-      {Hour, Minute, Second}}) ->
+		  {Hour, Minute, Second}}) ->
     #xmlel{name = <<"x">>,
-     attrs =
-         [{<<"xmlns">>, ?NS_DELAY91},
-    {<<"stamp">>,
-     iolist_to_binary(io_lib:format("~4..0w~2..0w~2..0wT~2..0w:~2..0w:~2..0w",
-            [Year, Month, Day, Hour, Minute,
-             Second]))}],
-     children = []}.
+	   attrs =
+	       [{<<"xmlns">>, ?NS_DELAY91},
+		{<<"stamp">>,
+		 iolist_to_binary(io_lib:format("~4..0w~2..0w~2..0wT~2..0w:~2..0w:~2..0w",
+						[Year, Month, Day, Hour, Minute,
+						 Second]))}],
+	   children = []}.
 
 -spec now_to_utc_string(erlang:timestamp()) -> binary().
 
 now_to_utc_string({MegaSecs, Secs, MicroSecs}) ->
     {{Year, Month, Day}, {Hour, Minute, Second}} =
-  calendar:now_to_universal_time({MegaSecs, Secs,
-          MicroSecs}),
+	calendar:now_to_universal_time({MegaSecs, Secs,
+					MicroSecs}),
     list_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0w.~6."
                                  ".0wZ",
                                  [Year, Month, Day, Hour, Minute, Second,
@@ -658,18 +676,18 @@ now_to_utc_string({MegaSecs, Secs, MicroSecs}) ->
 
 now_to_local_string({MegaSecs, Secs, MicroSecs}) ->
     LocalTime = calendar:now_to_local_time({MegaSecs, Secs,
-              MicroSecs}),
+					    MicroSecs}),
     UTCTime = calendar:now_to_universal_time({MegaSecs,
-                Secs, MicroSecs}),
+					      Secs, MicroSecs}),
     Seconds =
-  calendar:datetime_to_gregorian_seconds(LocalTime) -
-    calendar:datetime_to_gregorian_seconds(UTCTime),
+	calendar:datetime_to_gregorian_seconds(LocalTime) -
+	  calendar:datetime_to_gregorian_seconds(UTCTime),
     {{H, M, _}, Sign} = if Seconds < 0 ->
-             {calendar:seconds_to_time(-Seconds), "-"};
-         true -> {calendar:seconds_to_time(Seconds), "+"}
-      end,
+			       {calendar:seconds_to_time(-Seconds), "-"};
+			   true -> {calendar:seconds_to_time(Seconds), "+"}
+			end,
     {{Year, Month, Day}, {Hour, Minute, Second}} =
-  LocalTime,
+	LocalTime,
     list_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0w.~6."
                                  ".0w~s~2..0w:~2..0w",
                                  [Year, Month, Day, Hour, Minute, Second,
@@ -689,8 +707,8 @@ parse_datetime(TimeStr) ->
     {T, MS, TZH, TZM} = parse_time(Time),
     S = calendar:datetime_to_gregorian_seconds({D, T}),
     S1 = calendar:datetime_to_gregorian_seconds({{1970, 1,
-              1},
-             {0, 0, 0}}),
+						  1},
+						 {0, 0, 0}}),
     Seconds = S - S1 - TZH * 60 * 60 - TZM * 60,
     {Seconds div 1000000, Seconds rem 1000000, MS}.
 
@@ -698,7 +716,7 @@ parse_datetime(TimeStr) ->
 parse_date(Date) ->
     [Y, M, D] = str:tokens(Date, <<"-">>),
     Date1 = {binary_to_integer(Y), binary_to_integer(M),
-       binary_to_integer(D)},
+	     binary_to_integer(D)},
     case calendar:valid_date(Date1) of
       true -> Date1;
       _ -> false
@@ -709,18 +727,18 @@ parse_time(Time) ->
     case str:str(Time, <<"Z">>) of
       0 -> parse_time_with_timezone(Time);
       _ ->
-    [T | _] = str:tokens(Time, <<"Z">>),
-    {TT, MS} = parse_time1(T),
-    {TT, MS, 0, 0}
+	  [T | _] = str:tokens(Time, <<"Z">>),
+	  {TT, MS} = parse_time1(T),
+	  {TT, MS, 0, 0}
     end.
 
 parse_time_with_timezone(Time) ->
     case str:str(Time, <<"+">>) of
       0 ->
-    case str:str(Time, <<"-">>) of
-      0 -> false;
-      _ -> parse_time_with_timezone(Time, <<"-">>)
-    end;
+	  case str:str(Time, <<"-">>) of
+	    0 -> false;
+	    _ -> parse_time_with_timezone(Time, <<"-">>)
+	  end;
       _ -> parse_time_with_timezone(Time, <<"+">>)
     end.
 
@@ -741,22 +759,22 @@ parse_timezone(TZ) ->
 parse_time1(Time) ->
     [HMS | T] = str:tokens(Time, <<".">>),
     MS = case T of
-     [] -> 0;
-     [Val] -> binary_to_integer(str:left(Val, 6, $0))
-   end,
+	   [] -> 0;
+	   [Val] -> binary_to_integer(str:left(Val, 6, $0))
+	 end,
     [H, M, S] = str:tokens(HMS, <<":">>),
     {[H1, M1, S1], true} = check_list([{H, 24}, {M, 60},
-               {S, 60}]),
+				       {S, 60}]),
     {{H1, M1, S1}, MS}.
 
 check_list(List) ->
     lists:mapfoldl(fun ({L, N}, B) ->
-         V = binary_to_integer(L),
-         if (V >= 0) and (V =< N) -> {V, B};
-            true -> {false, false}
-         end
-       end,
-       true, List).
+			   V = binary_to_integer(L),
+			   if (V >= 0) and (V =< N) -> {V, B};
+			      true -> {false, false}
+			   end
+		   end,
+		   true, List).
 
 %
 % Base64 stuff (based on httpd_util.erl)

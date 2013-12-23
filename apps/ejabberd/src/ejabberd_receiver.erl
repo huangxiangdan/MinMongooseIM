@@ -5,7 +5,7 @@
 %%% Created : 10 Nov 2003 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2011   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2013   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -25,6 +25,7 @@
 %%%----------------------------------------------------------------------
 
 -module(ejabberd_receiver).
+
 -author('alexey@process-one.net').
 
 -behaviour(gen_server).
@@ -41,15 +42,15 @@
 	 close/1]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+-export([init/1, handle_call/3, handle_cast/2,
+	 handle_info/2, terminate/2, code_change/3]).
 
 -include("ejabberd.hrl").
--include("jlib.hrl").
+-include("logger.hrl").
 
 -record(state,
-	{socket :: inet:socket() | p1_tls:tls_socket() | ejabberd_zlib:zlib_socket(),
-         sock_mod = gen_tcp :: gen_tcp | p1_tls | ejabberd_zlib,
+	{socket :: inet:socket() | p1_tls:tls_socket() | ezlib:zlib_socket(),
+         sock_mod = gen_tcp :: gen_tcp | p1_tls | ezlib,
          shaper_state = none :: shaper:shaper(),
          c2s_pid :: pid(),
 	 max_stanza_size = infinity :: non_neg_integer() | infinity,
@@ -107,7 +108,7 @@ starttls(Pid, TLSSocket) ->
     do_call(Pid, {starttls, TLSSocket}).
 
 -spec compress(pid(), iodata() | undefined) -> {error, any()} |
-                                               {ok, ejabberd_zlib:zlib_socket()}.
+                                               {ok, ezlib:zlib_socket()}.
 
 compress(Pid, Data) ->
     do_call(Pid, {compress, Data}).
@@ -121,6 +122,7 @@ become_controller(Pid, C2SPid) ->
 
 close(Pid) ->
     gen_server:cast(Pid, close).
+
 
 %%====================================================================
 %% gen_server callbacks
@@ -136,16 +138,13 @@ close(Pid) ->
 init([Socket, SockMod, Shaper, MaxStanzaSize]) ->
     ShaperState = shaper:new(Shaper),
     Timeout = case SockMod of
-		  ssl ->
-		      20;
-		  _ ->
-		      infinity
+		ssl -> 20;
+		_ -> infinity
 	      end,
-    {ok, #state{socket = Socket,
-		sock_mod = SockMod,
-		shaper_state = ShaperState,
-		max_stanza_size = MaxStanzaSize,
-		timeout = Timeout}}.
+    {ok,
+     #state{socket = Socket, sock_mod = SockMod,
+	    shaper_state = ShaperState,
+	    max_stanza_size = MaxStanzaSize, timeout = Timeout}}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -161,7 +160,8 @@ handle_call({starttls, TLSSocket}, _From,
 		   c2s_pid = C2SPid,
 		   max_stanza_size = MaxStanzaSize} = State) ->
     close_stream(XMLStreamState),
-    NewXMLStreamState = xml_stream:new(C2SPid, MaxStanzaSize),
+    NewXMLStreamState = xml_stream:new(C2SPid,
+				       MaxStanzaSize),
     NewState = State#state{socket = TLSSocket,
 			   sock_mod = p1_tls,
 			   xml_stream_state = NewXMLStreamState},
@@ -176,7 +176,7 @@ handle_call({compress, Data}, _From,
 		   c2s_pid = C2SPid, socket = Socket, sock_mod = SockMod,
 		   max_stanza_size = MaxStanzaSize} =
 		State) ->
-    {ok, ZlibSocket} = ejabberd_zlib:enable_zlib(SockMod,
+    {ok, ZlibSocket} = ezlib:enable_zlib(SockMod,
 						 Socket),
     if Data /= undefined -> do_send(State, Data);
        true -> ok
@@ -185,9 +185,9 @@ handle_call({compress, Data}, _From,
     NewXMLStreamState = xml_stream:new(C2SPid,
 				       MaxStanzaSize),
     NewState = State#state{socket = ZlibSocket,
-			   sock_mod = ejabberd_zlib,
+			   sock_mod = ezlib,
 			   xml_stream_state = NewXMLStreamState},
-    case ejabberd_zlib:recv_data(ZlibSocket, <<"">>) of
+    case ezlib:recv_data(ZlibSocket, <<"">>) of
       {ok, ZlibData} ->
 	  {reply, {ok, ZlibSocket},
 	   process_data(ZlibData, NewState), ?HIBERNATE_TIMEOUT};
@@ -238,7 +238,6 @@ handle_info({Tag, _TCPSocket, Data},
 	    #state{socket = Socket, sock_mod = SockMod} = State)
     when (Tag == tcp) or (Tag == ssl) or
 	   (Tag == ejabberd_xml) ->
-    ?INFO_MSG("ejabberd_receiver handle_info Tag: ~p (~p), ~p",[Tag, _TCPSocket, Data]),
     case SockMod of
       p1_tls ->
 	  case p1_tls:recv_data(Socket, Data) of
@@ -247,8 +246,8 @@ handle_info({Tag, _TCPSocket, Data},
 		 ?HIBERNATE_TIMEOUT};
 	    {error, _Reason} -> {stop, normal, State}
 	  end;
-      ejabberd_zlib ->
-	  case ejabberd_zlib:recv_data(Socket, Data) of
+      ezlib ->
+	  case ezlib:recv_data(Socket, Data) of
 	    {ok, ZlibData} ->
 		{noreply, process_data(ZlibData, State),
 		 ?HIBERNATE_TIMEOUT};

@@ -5,7 +5,7 @@
 %%% Created : 16 Nov 2002 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2011   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2013   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -36,10 +36,12 @@
 	 parse_listener_portip/2,
 	 add_listener/3,
 	 delete_listener/2,
-   transform_options/1
+         transform_options/1,
+         validate_cfg/1
 	]).
 
 -include("ejabberd.hrl").
+-include("logger.hrl").
 
 %% We do not block on send anymore.
 -define(TCP_SEND_TIMEOUT, 15000).
@@ -55,18 +57,18 @@ init(_) ->
 
 bind_tcp_ports() ->
     case ejabberd_config:get_option(listen, fun validate_cfg/1) of
-  undefined ->
-      ignore;
-  Ls ->
-      lists:foreach(
-        fun({Port, Module, Opts}) ->
-          ModuleRaw = strip_frontend(Module),
-          case ModuleRaw:socket_type() of
-        independent -> ok;
-        _ ->
-            bind_tcp_port(Port, Module, Opts)
-          end
-        end, Ls)
+	undefined ->
+	    ignore;
+	Ls ->
+	    lists:foreach(
+	      fun({Port, Module, Opts}) ->
+		      ModuleRaw = strip_frontend(Module),
+		      case ModuleRaw:socket_type() of
+			  independent -> ok;
+			  _ ->
+			      bind_tcp_port(Port, Module, Opts)
+		      end
+	      end, Ls)
     end.
 
 bind_tcp_port(PortIP, Module, RawOpts) ->
@@ -78,7 +80,8 @@ bind_tcp_port(PortIP, Module, RawOpts) ->
 		udp -> ok;
 		_ ->
 		    ListenSocket = listen_tcp(PortIP, Module, SockOpts, Port, IPS),
-		    ets:insert(listen_sockets, {PortIP, ListenSocket})
+		    ets:insert(listen_sockets, {PortIP, ListenSocket}),
+                    ok
 	    end
     catch
 	throw:{error, Error} ->
@@ -87,19 +90,19 @@ bind_tcp_port(PortIP, Module, RawOpts) ->
 
 start_listeners() ->
     case ejabberd_config:get_option(listen, fun validate_cfg/1) of
-  undefined ->
-      ignore;
-  Ls ->
-      Ls2 = lists:map(
-          fun({Port, Module, Opts}) ->
-            case start_listener(Port, Module, Opts) of
-          {ok, _Pid} = R -> R;
-          {error, Error} ->
-        throw(Error)
-      end
-    end, Ls),
-      report_duplicated_portips(Ls),
-      {ok, {{one_for_one, 10, 1}, Ls2}}
+	undefined ->
+	    ignore;
+	Ls ->
+	    Ls2 = lists:map(
+	        fun({Port, Module, Opts}) ->
+		        case start_listener(Port, Module, Opts) of
+			    {ok, _Pid} = R -> R;
+			    {error, Error} ->
+				throw(Error)
+			end
+		end, Ls),
+	    report_duplicated_portips(Ls),
+	    {ok, {{one_for_one, 10, 1}, Ls2}}
     end.
 
 report_duplicated_portips(L) ->
@@ -230,7 +233,7 @@ parse_listener_portip(PortIP, Opts) ->
 		{ok, T} = inet_parse:address(binary_to_list(S)),
 		{P, T, S, Prot}
 	end,
-    IPV = case size(IPT) of
+    IPV = case tuple_size(IPT) of
 	      4 -> inet;
 	      8 -> inet6
 	  end,
@@ -288,8 +291,6 @@ accept(ListenSocket, Module, Opts) ->
 		_ ->
 		    ok
 	    end,
-      ?INFO_MSG("accept Module -> ~p",
-            [Module]),
 	    CallMod = case is_frontend(Module) of
 			  true -> ejabberd_frontend_socket;
 			  false -> ejabberd_socket
@@ -368,7 +369,7 @@ stop_listeners() ->
     Ports = ejabberd_config:get_option(listen, fun validate_cfg/1),
     lists:foreach(
       fun({PortIpNetp, Module, _Opts}) ->
-        delete_listener(PortIpNetp, Module)
+	      delete_listener(PortIpNetp, Module)
       end,
       Ports).
 

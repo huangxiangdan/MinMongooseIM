@@ -5,7 +5,7 @@
 %%% Created : 27 Nov 2002 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2011   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2013   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -25,29 +25,32 @@
 %%%----------------------------------------------------------------------
 
 -module(ejabberd_router).
+
 -author('alexey@process-one.net').
 
 -behaviour(gen_server).
 
 %% API
 -export([route/3,
-         route_error/4,
-         register_route/1,
-         register_route/2,
-         register_routes/1,
-         unregister_route/1,
-         unregister_routes/1,
-         dirty_get_all_routes/0,
-         dirty_get_all_domains/0
-        ]).
+	 route_error/4,
+	 register_route/1,
+	 register_route/2,
+	 register_routes/1,
+	 unregister_route/1,
+	 unregister_routes/1,
+	 dirty_get_all_routes/0,
+	 dirty_get_all_domains/0
+	]).
 
 -export([start_link/0]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+-export([init/1, handle_call/3, handle_cast/2,
+	 handle_info/2, terminate/2, code_change/3]).
 
 -include("ejabberd.hrl").
+-include("logger.hrl").
+
 -include("jlib.hrl").
 
 -type local_hint() :: undefined | integer() | {apply, atom(), atom()}.

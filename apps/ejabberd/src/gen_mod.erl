@@ -1,11 +1,12 @@
 %%%----------------------------------------------------------------------
 %%% File    : gen_mod.erl
 %%% Author  : Alexey Shchepin <alexey@process-one.net>
+%%% Purpose : 
 %%% Purpose :
 %%% Created : 24 Jan 2003 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2011   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2013   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -25,41 +26,42 @@
 %%%----------------------------------------------------------------------
 
 -module(gen_mod).
+
 -author('alexey@process-one.net').
 
--export([start/0,
-         start_module/3,
-         stop_module/2,
-         stop_module_keep_config/2,
-         get_opt/3,
-         get_opt/4,
-         get_opt_host/3,
-         get_module_opt/5,
-         get_module_opt_host/3,
-         loaded_modules/1,
-         loaded_modules_with_opts/1,
-         get_hosts/2,
-         get_module_proc/2,
-         is_loaded/2]).
+-export([start/0, start_module/3, stop_module/2,
+	 stop_module_keep_config/2, get_opt/3, get_opt/4,
+	 get_opt_host/3, db_type/1, db_type/2, get_module_opt/5,
+	 get_module_opt_host/3, loaded_modules/1,
+	 loaded_modules_with_opts/1, get_hosts/2,
+	 get_module_proc/2, is_loaded/2]).
 
--export([behaviour_info/1]).
+%%-export([behaviour_info/1]).
 
 -include("ejabberd.hrl").
+-include("logger.hrl").
 
--record(ejabberd_module, {module_host, opts}).
+-record(ejabberd_module,
+        {module_host = {undefined, <<"">>} :: {atom(), binary()},
+         opts = [] :: opts() | '_' | '$2'}).
 
-behaviour_info(callbacks) ->
-    [{start, 2},
-     {stop, 1}];
-behaviour_info(_Other) ->
-    undefined.
+-type opts() :: [{atom(), any()}].
+
+-callback start(binary(), opts()) -> any().
+-callback stop(binary()) -> any().
+
+-export_type([opts/0]).
+
+%%behaviour_info(callbacks) -> [{start, 2}, {stop, 1}];
+%%behaviour_info(_Other) -> undefined.
 
 start() ->
     ets:new(ejabberd_modules,
-            [named_table,
-             public,
-             {keypos, #ejabberd_module.module_host}]),
+	    [named_table, public,
+	     {keypos, #ejabberd_module.module_host}]),
     ok.
+
+-spec start_module(binary(), atom(), opts()) -> any().
 
 start_module(Host, Module, Opts) ->
     ets:insert(ejabberd_modules,
@@ -141,8 +143,12 @@ wait_for_stop1(MonitorReference) ->
 
 -type check_fun() :: fun((any()) -> any()) | {module(), atom()}.
 
+-spec get_opt(atom(), opts(), check_fun()) -> any().
+
 get_opt(Opt, Opts, F) ->
     get_opt(Opt, Opts, F, undefined).
+
+-spec get_opt(atom(), opts(), check_fun(), any()) -> any().
 
 get_opt(Opt, Opts, F, Default) ->
     case lists:keysearch(Opt, 1, Opts) of
@@ -185,9 +191,13 @@ get_module_opt_host(Host, Module, Default) ->
                          Default),
     ejabberd_regexp:greplace(Val, <<"@HOST@">>, Host).
 
+-spec get_opt_host(binary(), opts(), binary()) -> binary().
+
 get_opt_host(Host, Opts, Default) ->
     Val = get_opt(host, Opts, fun iolist_to_binary/1, Default),
     ejabberd_regexp:greplace(Val, <<"@HOST@">>, Host).
+
+-spec db_type(opts()) -> odbc | mnesia.
 
 db_type(Opts) ->
     get_opt(db_type, Opts,
@@ -212,11 +222,15 @@ loaded_modules(Host) ->
 	       [{#ejabberd_module{_ = '_', module_host = {'$1', Host}},
 		 [], ['$1']}]).
 
+-spec loaded_modules_with_opts(binary()) -> [{atom(), opts()}].
+
 loaded_modules_with_opts(Host) ->
     ets:select(ejabberd_modules,
 	       [{#ejabberd_module{_ = '_', module_host = {'$1', Host},
 				  opts = '$2'},
 		 [], [{{'$1', '$2'}}]}]).
+
+-spec get_hosts(opts(), binary()) -> [binary()].
 
 get_hosts(Opts, Prefix) ->
     case get_opt(hosts, Opts,

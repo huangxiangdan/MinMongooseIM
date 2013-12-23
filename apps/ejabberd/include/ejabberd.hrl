@@ -74,12 +74,6 @@
     lager:critical(Format, Args)).
 -endif.
 
--record(session, {sid :: tuple(),
-                  usr :: {binary(), binary(), binary()},
-                  us :: {binary(), binary()},
-                  priority :: integer(),
-                  info :: list()}).
-
 -ifdef(no_binary_to_integer).
 
 -import(ejabberd_binary, [binary_to_integer/1,

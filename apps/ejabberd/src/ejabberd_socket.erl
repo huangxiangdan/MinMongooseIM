@@ -5,7 +5,7 @@
 %%% Created : 23 Aug 2006 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2011   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2013   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -25,6 +25,7 @@
 %%%----------------------------------------------------------------------
 
 -module(ejabberd_socket).
+
 -author('alexey@process-one.net').
 
 %% API
@@ -47,6 +48,7 @@
 	 sockname/1, peername/1]).
 
 -include("ejabberd.hrl").
+-include("logger.hrl").
 -include("jlib.hrl").
 
 -type sockmod() :: ejabberd_http_poll |
@@ -77,62 +79,54 @@
 %% Description:
 %%--------------------------------------------------------------------
 start(Module, SockMod, Socket, Opts) ->
-    ?INFO_MSG("socket start Module -> ~p, SockMod (~p), Opts(~p)",
-            [Module, SockMod, Opts]),
     case Module:socket_type() of
       xml_stream ->
-    	  MaxStanzaSize = case lists:keysearch(max_stanza_size, 1,
-    					       Opts)
-    			      of
-    			    {value, {_, Size}} -> Size;
-    			    _ -> infinity
-    			  end,
-    	  {ReceiverMod, Receiver, RecRef} = case catch
-    						   SockMod:custom_receiver(Socket)
-    						of
-    					      {receiver, RecMod, RecPid} ->
-    						  {RecMod, RecPid, RecMod};
-    					      _ ->
-    						  RecPid =
-    						      ejabberd_receiver:start(Socket,
-    									      SockMod,
-    									      none,
-    									      MaxStanzaSize),
-    						  {ejabberd_receiver, RecPid,
-    						   RecPid}
-    					    end,
-        ?INFO_MSG("socket start pid(~p)",
-                [{ReceiverMod, Receiver, RecRef}]),
-    	  SocketData = #socket_state{sockmod = SockMod,
-    				     socket = Socket, receiver = RecRef},
-    	  case Module:start({?MODULE, SocketData}, Opts) of
-    	    {ok, Pid} ->
-        		case SockMod:controlling_process(Socket, Receiver) of
-        		  ok -> ok;
-        		  {error, _Reason} -> SockMod:close(Socket)
-        		end,
-            ?INFO_MSG("after controlling_process ",
-                    []),
-        		ReceiverMod:become_controller(Receiver, Pid);
-    	    {error, _Reason} ->
-            ?INFO_MSG("Module:start failed, Reason = ~p ",
-                    [_Reason]),
-    		    SockMod:close(Socket),
-        		case ReceiverMod of
-        		  ejabberd_receiver -> ReceiverMod:close(Receiver);
-        		  _ -> ok
-        		end
-    	  end;
+	  MaxStanzaSize = case lists:keysearch(max_stanza_size, 1,
+					       Opts)
+			      of
+			    {value, {_, Size}} -> Size;
+			    _ -> infinity
+			  end,
+	  {ReceiverMod, Receiver, RecRef} = case catch
+						   SockMod:custom_receiver(Socket)
+						of
+					      {receiver, RecMod, RecPid} ->
+						  {RecMod, RecPid, RecMod};
+					      _ ->
+						  RecPid =
+						      ejabberd_receiver:start(Socket,
+									      SockMod,
+									      none,
+									      MaxStanzaSize),
+						  {ejabberd_receiver, RecPid,
+						   RecPid}
+					    end,
+	  SocketData = #socket_state{sockmod = SockMod,
+				     socket = Socket, receiver = RecRef},
+	  case Module:start({?MODULE, SocketData}, Opts) of
+	    {ok, Pid} ->
+		case SockMod:controlling_process(Socket, Receiver) of
+		  ok -> ok;
+		  {error, _Reason} -> SockMod:close(Socket)
+		end,
+		ReceiverMod:become_controller(Receiver, Pid);
+	    {error, _Reason} ->
+		SockMod:close(Socket),
+		case ReceiverMod of
+		  ejabberd_receiver -> ReceiverMod:close(Receiver);
+		  _ -> ok
+		end
+	  end;
       independent -> ok;
       raw ->
-    	  case Module:start({SockMod, Socket}, Opts) of
-    	    {ok, Pid} ->
-    		case SockMod:controlling_process(Socket, Pid) of
-    		  ok -> ok;
-    		  {error, _Reason} -> SockMod:close(Socket)
-    		end;
-    	    {error, _Reason} -> SockMod:close(Socket)
-    	  end
+	  case Module:start({SockMod, Socket}, Opts) of
+	    {ok, Pid} ->
+		case SockMod:controlling_process(Socket, Pid) of
+		  ok -> ok;
+		  {error, _Reason} -> SockMod:close(Socket)
+		end;
+	    {error, _Reason} -> SockMod:close(Socket)
+	  end
     end.
 
 connect(Addr, Port, Opts) ->
@@ -158,13 +152,13 @@ connect(Addr, Port, Opts, Timeout) ->
 starttls(SocketData, TLSOpts) ->
     {ok, TLSSocket} = p1_tls:tcp_to_tls(SocketData#socket_state.socket, TLSOpts),
     ejabberd_receiver:starttls(SocketData#socket_state.receiver, TLSSocket),
-    SocketData#socket_state{socket = TLSSocket, sockmod = tls}.
+    SocketData#socket_state{socket = TLSSocket, sockmod = p1_tls}.
 
 starttls(SocketData, TLSOpts, Data) ->
     {ok, TLSSocket} = p1_tls:tcp_to_tls(SocketData#socket_state.socket, TLSOpts),
     ejabberd_receiver:starttls(SocketData#socket_state.receiver, TLSSocket),
     send(SocketData, Data),
-    SocketData#socket_state{socket = TLSSocket, sockmod = tls}.
+    SocketData#socket_state{socket = TLSSocket, sockmod = p1_tls}.
 
 compress(SocketData) -> compress(SocketData, undefined).
 
@@ -175,11 +169,12 @@ compress(SocketData, Data) ->
     SocketData#socket_state{socket = ZlibSocket,
 			    sockmod = ezlib}.
 
-reset_stream(SocketData) when is_pid(SocketData#socket_state.receiver) ->
+reset_stream(SocketData)
+    when is_pid(SocketData#socket_state.receiver) ->
     ejabberd_receiver:reset_stream(SocketData#socket_state.receiver);
-reset_stream(SocketData) when is_atom(SocketData#socket_state.receiver) ->
-    (SocketData#socket_state.receiver):reset_stream(
-      SocketData#socket_state.socket).
+reset_stream(SocketData)
+    when is_atom(SocketData#socket_state.receiver) ->
+    (SocketData#socket_state.receiver):reset_stream(SocketData#socket_state.socket).
 
 -spec send(socket_state(), iodata()) -> ok.
 
@@ -201,22 +196,26 @@ send(SocketData, Data) ->
 -spec send_xml(socket_state(), xmlel()) -> any().
 
 send_xml(SocketData, Data) ->
-    catch (SocketData#socket_state.sockmod):send_xml(
-	    SocketData#socket_state.socket, Data).
+    catch
+      (SocketData#socket_state.sockmod):send_xml(SocketData#socket_state.socket,
+						 Data).
 
 change_shaper(SocketData, Shaper)
-  when is_pid(SocketData#socket_state.receiver) ->
-    ejabberd_receiver:change_shaper(SocketData#socket_state.receiver, Shaper);
+    when is_pid(SocketData#socket_state.receiver) ->
+    ejabberd_receiver:change_shaper(SocketData#socket_state.receiver,
+				    Shaper);
 change_shaper(SocketData, Shaper)
-  when is_atom(SocketData#socket_state.receiver) ->
-    (SocketData#socket_state.receiver):change_shaper(
-      SocketData#socket_state.socket, Shaper).
+    when is_atom(SocketData#socket_state.receiver) ->
+    (SocketData#socket_state.receiver):change_shaper(SocketData#socket_state.socket,
+						     Shaper).
 
-monitor(SocketData) when is_pid(SocketData#socket_state.receiver) ->
-    erlang:monitor(process, SocketData#socket_state.receiver);
-monitor(SocketData) when is_atom(SocketData#socket_state.receiver) ->
-    (SocketData#socket_state.receiver):monitor(
-      SocketData#socket_state.socket).
+monitor(SocketData)
+    when is_pid(SocketData#socket_state.receiver) ->
+    erlang:monitor(process,
+		   SocketData#socket_state.receiver);
+monitor(SocketData)
+    when is_atom(SocketData#socket_state.receiver) ->
+    (SocketData#socket_state.receiver):monitor(SocketData#socket_state.socket).
 
 get_sockmod(SocketData) ->
     SocketData#socket_state.sockmod.
@@ -230,22 +229,21 @@ get_verify_result(SocketData) ->
 close(SocketData) ->
     ejabberd_receiver:close(SocketData#socket_state.receiver).
 
-sockname(#socket_state{sockmod = SockMod, socket = Socket}) ->
+sockname(#socket_state{sockmod = SockMod,
+		       socket = Socket}) ->
     case SockMod of
-	gen_tcp ->
-	    inet:sockname(Socket);
-	_ ->
-	    SockMod:sockname(Socket)
+      gen_tcp -> inet:sockname(Socket);
+      _ -> SockMod:sockname(Socket)
     end.
 
-peername(#socket_state{sockmod = SockMod, socket = Socket}) ->
+peername(#socket_state{sockmod = SockMod,
+		       socket = Socket}) ->
     case SockMod of
-	gen_tcp ->
-	    inet:peername(Socket);
-	_ ->
-	    SockMod:peername(Socket)
+      gen_tcp -> inet:peername(Socket);
+      _ -> SockMod:peername(Socket)
     end.
 
 %%====================================================================
 %% Internal functions
 %%====================================================================
+%====================================================================
