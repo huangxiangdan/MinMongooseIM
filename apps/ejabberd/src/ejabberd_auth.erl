@@ -5,7 +5,7 @@
 %%% Created : 23 Nov 2002 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2011   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2013   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -27,6 +27,7 @@
 %% TODO: Use the functions in ejabberd auth to add and remove users.
 
 -module(ejabberd_auth).
+
 -author('alexey@process-one.net').
 
 %% External exports
@@ -45,6 +46,7 @@
 -export([auth_modules/1]).
 
 -include("ejabberd.hrl").
+-include("logger.hrl").
 
 %%%----------------------------------------------------------------------
 %%% API
@@ -411,7 +413,6 @@ entropy(B) ->
 %% Return the lists of all the auth modules actually used in the
 %% configuration
 auth_modules() ->
-    ?INFO_MSG("hosts is ~p", [?MYHOSTS]),
     lists:usort(lists:flatmap(fun (Server) ->
 				      auth_modules(Server)
 			      end,
@@ -422,7 +423,6 @@ auth_modules() ->
 %% Return the list of authenticated modules for a given host
 auth_modules(Server) ->
     LServer = jlib:nameprep(Server),
-    ?INFO_MSG("host is ~p, lServer is ~p", [Server, LServer]),
     Methods = ejabberd_config:get_option(
                 {auth_method, LServer},
                 fun(V) when is_list(V) ->
@@ -431,7 +431,6 @@ auth_modules(Server) ->
                    (V) when is_atom(V) ->
                         [V]
                 end, []),
-    ?INFO_MSG("methods is ~p", [Methods]),
     [jlib:binary_to_atom(<<"ejabberd_auth_",
                            (jlib:atom_to_binary(M))/binary>>)
      || M <- Methods].

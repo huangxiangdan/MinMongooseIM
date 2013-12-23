@@ -32,6 +32,7 @@
 	 server_new/7, server_start/3, server_step/2]).
 
 -include("ejabberd.hrl").
+-include("logger.hrl").
 
 %%
 -export_type([
@@ -181,8 +182,6 @@ server_start(State, Mech, ClientIn) ->
 server_step(State, ClientIn) ->
     Module = State#sasl_state.mech_mod,
     MechState = State#sasl_state.mech_state,
-    ?INFO_MSG("server_step Module is ~p, state is ~p",
-        [Module, State]),
     case Module:mech_step(MechState, ClientIn) of
         {ok, Props} ->
             case check_credentials(State, Props) of

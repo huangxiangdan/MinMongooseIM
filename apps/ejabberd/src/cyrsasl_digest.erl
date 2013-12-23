@@ -31,6 +31,7 @@
 -export([start/1, stop/0, mech_new/4, mech_step/2, parse/1]).
 
 -include("ejabberd.hrl").
+-include("logger.hrl").
 
 -behaviour(cyrsasl).
 
@@ -70,8 +71,6 @@ mech_new(Host, GetPassword, _CheckPassword,
 	    check_password = CheckPasswordDigest}}.
 
 mech_step(#state{step = 1, nonce = Nonce} = State, _) ->
-    ?INFO_MSG("mech_step state is ~p",
-        [State]),
     {continue,
      <<"nonce=\"", Nonce/binary,
        "\",qop=\"auth\",charset=utf-8,algorithm=md5-sess">>,
@@ -93,17 +92,13 @@ mech_step(#state{step = 3, nonce = Nonce} = State,
 		       "seems invalid: ~p (checking for Host "
 		       "~p, FQDN ~p)",
 		       [DigestURI, State#state.host, State#state.hostfqdn]),
-		?INFO_MSG("is_digesturi_valid:no", []),
 		{error, <<"not-authorized">>, UserName};
 	    true ->
 		AuthzId = proplists:get_value(<<"authzid">>, KeyVals, <<>>),
 		%AuthzId = xml:get_attr_s(<<"authzid">>, KeyVals),
 		case (State#state.get_password)(UserName) of
-		  {false, _} -> 
-		  	?INFO_MSG("get_password:false", []),
-		  	{error, <<"not-authorized">>, UserName};
+		  {false, _} -> {error, <<"not-authorized">>, UserName};
 		  {Passwd, AuthModule} ->
-          	?INFO_MSG("Passwd is ~p", [Passwd]),
 		      case (State#state.check_password)(UserName, <<"">>,
 		                    proplists:get_value(<<"response">>, KeyVals, <<>>),
 							%xml:get_attr_s(<<"response">>, KeyVals),
@@ -116,19 +111,15 @@ mech_step(#state{step = 3, nonce = Nonce} = State,
 									 <<"AUTHENTICATE">>)
 							end)
 			  of
-				{true, _} ->
-				    RspAuth = response(KeyVals, UserName, Passwd, Nonce,
-						       AuthzId, <<"">>),
-				    {continue, <<"rspauth=", RspAuth/binary>>,
-				     State#state{step = 5, auth_module = AuthModule,
-						 username = UserName,
-						 authzid = AuthzId}};
-				false -> 
-					?INFO_MSG("check_password:false", []),
-					{error, <<"not-authorized">>, UserName};
-				{false, _} -> 
-					?INFO_MSG("check_password 2:false", []),
-					{error, <<"not-authorized">>, UserName}
+			{true, _} ->
+			    RspAuth = response(KeyVals, UserName, Passwd, Nonce,
+					       AuthzId, <<"">>),
+			    {continue, <<"rspauth=", RspAuth/binary>>,
+			     State#state{step = 5, auth_module = AuthModule,
+					 username = UserName,
+					 authzid = AuthzId}};
+			false -> {error, <<"not-authorized">>, UserName};
+			{false, _} -> {error, <<"not-authorized">>, UserName}
 		      end
 		end
 	  end
@@ -229,26 +220,7 @@ get_local_fqdn2() ->
     end.
 
 hex(S) ->
-    hex(S, <<>>).
-
-hex(<<>>, Res) ->
-    binary_reverse(Res);
-hex(<<N, Ns/binary>>, Res) ->
-    D1 = digit_to_xchar(N rem 16),
-    D2 = digit_to_xchar(N div 16),
-    hex(Ns, <<D1, D2, Res/binary>>).
-
-binary_reverse(<<>>) ->
-    <<>>;
-binary_reverse(<<H,T/binary>>) ->
-    <<(binary_reverse(T))/binary,H>>.
-
- 
-digit_to_xchar(D) when (D >= 0) and (D < 10) ->
-    D + 48;
-digit_to_xchar(D) ->
-    D + 87.
-
+    p1_sha:to_hexlist(S).
 
 proplists_get_bin_value(Key, Pairs, Default) ->
     case proplists:get_value(Key, Pairs, Default) of

@@ -5,7 +5,7 @@
 %%% Created : 17 Feb 2006 by Mickael Remond <mremond@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2011   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2013   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -39,26 +39,25 @@
 
 
 %% Function used by ejabberd_auth:
--export([login/2,
-	 set_password/3,
-	 check_password/3,
-	 check_password/5,
-	 try_register/3,
-	 dirty_get_registered_users/0,
-	 get_vh_registered_users/1,
-	 get_password/2,
-	 get_password/3,
-	 is_user_exists/2,
-	 remove_user/2,
-	 remove_user/3,
+-export([login/2, set_password/3, check_password/3,
+	 check_password/5, try_register/3,
+	 dirty_get_registered_users/0, get_vh_registered_users/1,
+         get_vh_registered_users/2, get_vh_registered_users_number/1,
+         get_vh_registered_users_number/2, get_password_s/2,
+	 get_password/2, get_password/3, is_user_exists/2,
+	 remove_user/2, remove_user/3, store_type/0,
 	 plain_password_required/0]).
 
 -include("ejabberd.hrl").
+-include("logger.hrl").
+
 -include("jlib.hrl").
--record(anonymous, {us, sid}).
 
 %% Create the anonymous table if at least one virtual host has anonymous features enabled
 %% Register to login / logout events
+-record(anonymous, {us = {<<"">>, <<"">>} :: {binary(), binary()},
+                    sid = {now(), self()} :: ejabberd_sm:sid()}).
+
 start(Host) ->
     %% TODO: Check cluster mode
     mnesia:create_table(anonymous, [{ram_copies, [node()]},
@@ -79,13 +78,13 @@ allow_anonymous(Host) ->
 %% anonymous protocol can be: sasl_anon|login_anon|both
 is_sasl_anonymous_enabled(Host) ->
     case allow_anonymous(Host) of
-	false -> false;
-	true ->
-	    case anonymous_protocol(Host) of
-		sasl_anon -> true;
-		both      -> true;
-		_Other    -> false
-	    end
+      false -> false;
+      true ->
+	  case anonymous_protocol(Host) of
+	    sasl_anon -> true;
+	    both -> true;
+	    _Other -> false
+	  end
     end.
 
 %% Return true if anonymous login is enabled on the server
@@ -93,13 +92,13 @@ is_sasl_anonymous_enabled(Host) ->
 %% clients that do not support anonymous login)
 is_login_anonymous_enabled(Host) ->
     case allow_anonymous(Host) of
-	false -> false;
-	true  ->
-	    case anonymous_protocol(Host) of
-		login_anon -> true;
-		both       -> true;
-		_Other     -> false
-	    end
+      false -> false;
+      true ->
+	  case anonymous_protocol(Host) of
+	    login_anon -> true;
+	    both -> true;
+	    _Other -> false
+	  end
     end.
 
 %% Return the anonymous protocol to use: sasl_anon|login_anon|both
@@ -136,9 +135,8 @@ anonymous_user_exist(User, Server) ->
 %% Remove connection from Mnesia tables
 remove_connection(SID, LUser, LServer) ->
     US = {LUser, LServer},
-    F = fun() ->
-		mnesia:delete_object({anonymous, US, SID})
-        end,
+    F = fun () -> mnesia:delete_object({anonymous, US, SID})
+	end,
     mnesia:transaction(F).
 
 %% Register connection
@@ -221,12 +219,21 @@ set_password(User, Server, _Password) ->
 try_register(_User, _Server, _Password) ->
     {error, not_allowed}.
 
-dirty_get_registered_users() ->
-    [].
+dirty_get_registered_users() -> [].
 
 get_vh_registered_users(Server) ->
-    [{U, S} || {U, S, _R} <- ejabberd_sm:get_vh_session_list(Server)].
+    [{U, S}
+     || {U, S, _R}
+	    <- ejabberd_sm:get_vh_session_list(Server)].
 
+get_vh_registered_users(Server, _) ->
+    get_vh_registered_users(Server).
+
+get_vh_registered_users_number(Server) ->
+    length(get_vh_registered_users(Server)).
+
+get_vh_registered_users_number(Server, _) ->
+    get_vh_registered_users_number(Server).
 
 %% Return password of permanent user or false for anonymous users
 get_password(User, Server) ->
@@ -255,11 +262,11 @@ get_password_s(User, Server) ->
 is_user_exists(User, Server) ->
     anonymous_user_exist(User, Server).
 
-remove_user(_User, _Server) ->
-    {error, not_allowed}.
+remove_user(_User, _Server) -> {error, not_allowed}.
 
-remove_user(_User, _Server, _Password) ->
-    not_allowed.
+remove_user(_User, _Server, _Password) -> not_allowed.
 
-plain_password_required() ->
-    false.
+plain_password_required() -> false.
+
+store_type() ->
+	plain.
