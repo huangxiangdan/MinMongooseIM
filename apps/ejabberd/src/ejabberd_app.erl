@@ -48,17 +48,17 @@ start(normal, _Args) ->
 
     load_drivers([tls_drv, expat_erl]),
     translate:start(),
-    acl:start(),
     ejabberd_ctl:init(),
     ejabberd_commands:init(),
     gen_mod:start(),
+    ?INFO_MSG("application start", []),
     ejabberd_config:start(),
     ejabberd_check:config(),
+    acl:start(),
+    shaper:start(),
     maybe_start_alarms(),
     connect_nodes(),
     {ok, _} = Sup = ejabberd_sup:start_link(),
-    ejabberd_system_monitor:add_handler(),
-    ejabberd_rdbms:start(),
     ejabberd_auth:start(),
     cyrsasl:start(),
     %% Profiling
@@ -177,14 +177,8 @@ get_log_path() ->
 %% If ejabberd is running on some Windows machine, get nameservers and add to Erlang
 maybe_add_nameservers() ->
     case os:type() of
-        {win32, _} -> add_windows_nameservers();
         _ -> ok
     end.
-
-add_windows_nameservers() ->
-    IPTs = win32_dns:get_nameservers(),
-    ?INFO_MSG("Adding machine's DNS IPs to Erlang system:~n~p", [IPTs]),
-    lists:foreach(fun(IPT) -> inet_db:add_ns(IPT) end, IPTs).
 
 
 broadcast_c2s_shutdown() ->

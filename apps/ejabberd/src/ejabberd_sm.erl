@@ -63,7 +63,6 @@
 -include("ejabberd.hrl").
 -include("jlib.hrl").
 -include("ejabberd_commands.hrl").
--include("mod_privacy.hrl").
 
 -record(session_counter, {vhost, count}).
 -record(state, {}).
@@ -582,7 +581,7 @@ is_privacy_allow(From, To, Packet) ->
     Server = To#jid.server,
     PrivacyList =
 	ejabberd_hooks:run_fold(privacy_get_user_list, Server,
-				#userlist{}, [User, Server]),
+				{}, [User, Server]),
     is_privacy_allow(From, To, Packet, PrivacyList).
 
 %% Check if privacy rules allow this delivery

@@ -94,6 +94,7 @@ check_password(User, Server, Password, Digest, DigestGen) ->
     US = {LUser, LServer},
     case catch mnesia:dirty_read({passwd, US}) of
 	[#passwd{password = Passwd}] ->
+      ?INFO_MSG("Password is ~p, Digest is ~p", [Password, Digest]),
 	    DigRes = if
 			 Digest /= <<>> ->
                  Digest == DigestGen(Passwd);
@@ -231,6 +232,7 @@ get_vh_registered_users_number(Server, _) ->
     get_vh_registered_users_number(Server).
 
 get_password(User, Server) ->
+    ?INFO_MSG("User is ~p, Server is ~p", [User, Server]),
     LUser = jlib:nodeprep(User),
     LServer = jlib:nameprep(Server),
     US = {LUser, LServer},
@@ -242,6 +244,7 @@ get_password(User, Server) ->
     end.
 
 get_password_s(User, Server) ->
+    ?INFO_MSG("User is ~p, Server is ~p", [User, Server]),
     LUser = jlib:nodeprep(User),
     LServer = jlib:nameprep(Server),
     US = {LUser, LServer},

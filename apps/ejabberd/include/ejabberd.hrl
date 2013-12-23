@@ -35,6 +35,16 @@
 
 -define(S2STIMEOUT, 600000).
 
+
+-record(scram,
+  {storedkey = <<"">>,
+         serverkey = <<"">>,
+         salt = <<"">>,
+         iterationcount = 0 :: integer()}).
+
+-type scram() :: #scram{}.
+
+-define(SCRAM_DEFAULT_ITERATION_COUNT, 4096).
 %%-define(DBGFSM, true).
 
 %% ---------------------------------

@@ -35,7 +35,8 @@
 	 stop_listener/2,
 	 parse_listener_portip/2,
 	 add_listener/3,
-	 delete_listener/2
+	 delete_listener/2,
+   transform_options/1
 	]).
 
 -include("ejabberd.hrl").
@@ -53,19 +54,19 @@ init(_) ->
     {ok, {{one_for_one, 10, 1}, []}}.
 
 bind_tcp_ports() ->
-    case ejabberd_config:get_local_option(listen) of
-	undefined ->
-	    ignore;
-	Ls ->
-	    lists:foreach(
-	      fun({Port, Module, Opts}) ->
-		      ModuleRaw = strip_frontend(Module),
-		      case ModuleRaw:socket_type() of
-			  independent -> ok;
-			  _ ->
-			      bind_tcp_port(Port, Module, Opts)
-		      end
-	      end, Ls)
+    case ejabberd_config:get_option(listen, fun validate_cfg/1) of
+  undefined ->
+      ignore;
+  Ls ->
+      lists:foreach(
+        fun({Port, Module, Opts}) ->
+          ModuleRaw = strip_frontend(Module),
+          case ModuleRaw:socket_type() of
+        independent -> ok;
+        _ ->
+            bind_tcp_port(Port, Module, Opts)
+          end
+        end, Ls)
     end.
 
 bind_tcp_port(PortIP, Module, RawOpts) ->
@@ -85,21 +86,20 @@ bind_tcp_port(PortIP, Module, RawOpts) ->
     end.
 
 start_listeners() ->
-    case ejabberd_config:get_local_option(listen) of
-	undefined ->
-	    ignore;
-	Ls ->
-	    Ls2 = lists:map(
-	        fun({Port, Module, Opts}) ->
-            ?INFO_MSG("start listener for Port(~p), Module (~p)", [Port, Module]),
-		        case start_listener(Port, Module, Opts) of
-			    {ok, _Pid} = R -> R;
-			    {error, Error} ->
-				throw(Error)
-			end
-		end, Ls),
-	    report_duplicated_portips(Ls),
-	    {ok, {{one_for_one, 10, 1}, Ls2}}
+    case ejabberd_config:get_option(listen, fun validate_cfg/1) of
+  undefined ->
+      ignore;
+  Ls ->
+      Ls2 = lists:map(
+          fun({Port, Module, Opts}) ->
+            case start_listener(Port, Module, Opts) of
+          {ok, _Pid} = R -> R;
+          {error, Error} ->
+        throw(Error)
+      end
+    end, Ls),
+      report_duplicated_portips(Ls),
+      {ok, {{one_for_one, 10, 1}, Ls2}}
     end.
 
 report_duplicated_portips(L) ->
@@ -365,10 +365,10 @@ start_listener_sup(Port, Module, Opts) ->
     supervisor:start_child(ejabberd_listeners, ChildSpec).
 
 stop_listeners() ->
-    Ports = ejabberd_config:get_local_option(listen),
+    Ports = ejabberd_config:get_option(listen, fun validate_cfg/1),
     lists:foreach(
       fun({PortIpNetp, Module, _Opts}) ->
-	      delete_listener(PortIpNetp, Module)
+        delete_listener(PortIpNetp, Module)
       end,
       Ports).
 
@@ -398,7 +398,8 @@ add_listener(PortIP, Module, Opts) ->
     PortIP1 = {Port, IPT, Proto},
     case start_listener(PortIP1, Module, Opts) of
 	{ok, _Pid} ->
-	    Ports = case ejabberd_config:get_local_option(listen) of
+	    Ports = case ejabberd_config:get_option(
+                           listen, fun validate_cfg/1) of
 			undefined ->
 			    [];
 			Ls ->
@@ -429,7 +430,8 @@ delete_listener(PortIP, Module) ->
 delete_listener(PortIP, Module, Opts) ->
     {Port, IPT, _, _, Proto, _} = parse_listener_portip(PortIP, Opts),
     PortIP1 = {Port, IPT, Proto},
-    Ports = case ejabberd_config:get_local_option(listen) of
+    Ports = case ejabberd_config:get_option(
+                   listen, fun validate_cfg/1) of
 		undefined ->
 		    [];
 		Ls ->
@@ -603,6 +605,26 @@ transform_options(Opt, Opts) ->
                              {inet:port_number(), inet:ip_address()} |
                              {inet:port_number(), inet:ip_address(),
                               transport()}.
+-spec validate_cfg(list()) -> [{port_ip_transport(), module(), list()}].
+
+validate_cfg(L) ->
+    lists:map(
+      fun(LOpts) ->
+              lists:foldl(
+                fun({port, Port}, {{_, IP, T}, Mod, Opts}) ->
+                        true = ?IS_PORT(Port),
+                        {{Port, IP, T}, Mod, Opts};
+                   ({ip, IP}, {{Port, _, T}, Mod, Opts}) ->
+                        {{Port, prepare_ip(IP), T}, Mod, Opts};
+                   ({transport, T}, {{Port, IP, _}, Mod, Opts}) ->
+                        true = ?IS_TRANSPORT(T),
+                        {{Port, IP, T}, Mod, Opts};
+                   ({module, Mod}, {Port, _, Opts}) ->
+                        {Port, prepare_mod(Mod), Opts};
+                   (Opt, {Port, Mod, Opts}) ->
+                        {Port, Mod, [Opt|Opts]}
+                end, {{5222, {0,0,0,0}, tcp}, ejabberd_c2s, []}, LOpts)
+      end, L).
 
 prepare_ip({A, B, C, D} = IP)
   when ?IS_CHAR(A) and ?IS_CHAR(B) and ?IS_CHAR(C) and ?IS_CHAR(D) ->

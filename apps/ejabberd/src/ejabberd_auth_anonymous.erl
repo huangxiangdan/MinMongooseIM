@@ -105,18 +105,21 @@ is_login_anonymous_enabled(Host) ->
 %% Return the anonymous protocol to use: sasl_anon|login_anon|both
 %% defaults to login_anon
 anonymous_protocol(Host) ->
-    case ejabberd_config:get_local_option({anonymous_protocol, Host}) of
-	sasl_anon  -> sasl_anon;
-	login_anon -> login_anon;
-	both       -> both;
-	_Other     -> sasl_anon
-    end.
+    ejabberd_config:get_option(
+      {anonymous_protocol, Host},
+      fun(sasl_anon) -> sasl_anon;
+         (login_anon) -> login_anon;
+         (both) -> both
+      end,
+      sasl_anon).
 
 %% Return true if multiple connections have been allowed in the config file
 %% defaults to false
 allow_multiple_connections(Host) ->
-    ejabberd_config:get_local_option(
-      {allow_multiple_connections, Host}) =:= true.
+    ejabberd_config:get_option(
+      {allow_multiple_connections, Host},
+      fun(V) when is_boolean(V) -> V end,
+      false).
 
 %% Check if user exist in the anonymus database
 anonymous_user_exist(User, Server) ->
@@ -139,30 +142,34 @@ remove_connection(SID, LUser, LServer) ->
     mnesia:transaction(F).
 
 %% Register connection
-register_connection(SID, #jid{luser = LUser, lserver = LServer}, Info) ->
-    AuthModule = xml:get_attr_s(auth_module, Info),
-    case AuthModule == ?MODULE of
-	true ->
-	    ejabberd_hooks:run(register_user, LServer, [LUser, LServer]),
-	    US = {LUser, LServer},
-	    mnesia:sync_dirty(
-	      fun() -> mnesia:write(#anonymous{us = US, sid=SID})
-	      end);
-	false ->
-	    ok
+register_connection(SID,
+		    #jid{luser = LUser, lserver = LServer}, Info) ->
+    AuthModule = list_to_atom(binary_to_list(xml:get_attr_s(<<"auth_module">>, Info))),
+    case AuthModule == (?MODULE) of
+      true ->
+	  ejabberd_hooks:run(register_user, LServer,
+			     [LUser, LServer]),
+	  US = {LUser, LServer},
+	  mnesia:sync_dirty(fun () ->
+				     mnesia:write(#anonymous{us = US,
+							     sid = SID})
+			     end);
+      false -> ok
     end.
 
 %% Remove an anonymous user from the anonymous users table
-unregister_connection(SID, #jid{luser = LUser, lserver = LServer}, _) ->
-    purge_hook(anonymous_user_exist(LUser, LServer),
-	       LUser, LServer),
+unregister_connection(SID,
+		      #jid{luser = LUser, lserver = LServer}, _) ->
+    purge_hook(anonymous_user_exist(LUser, LServer), LUser,
+	       LServer),
     remove_connection(SID, LUser, LServer).
 
 %% Launch the hook to purge user data only for anonymous users
 purge_hook(false, _LUser, _LServer) ->
     ok;
 purge_hook(true, LUser, LServer) ->
-    ejabberd_hooks:run(anonymous_purge_hook, LServer, [LUser, LServer]).
+    ejabberd_hooks:run(anonymous_purge_hook, LServer,
+		       [LUser, LServer]).
 
 %% ---------------------------------
 %% Specific anonymous auth functions
@@ -171,41 +178,42 @@ purge_hook(true, LUser, LServer) ->
 %% When anonymous login is enabled, check the password for permenant users
 %% before allowing access
 check_password(User, Server, Password) ->
-    check_password(User, Server, Password, undefined, undefined).
-check_password(User, Server, _Password, _Digest, _DigestGen) ->
-    %% We refuse login for registered accounts (They cannot logged but
-    %% they however are "reserved")
-    case ejabberd_auth:is_user_exists_in_other_modules(?MODULE,
-						       User, Server) of
-	%% If user exists in other module, reject anonnymous authentication
-	true  -> false;
-	%% If we are not sure whether the user exists in other module, reject anon auth
-	maybe  -> false;
-	false -> login(User, Server)
+    check_password(User, Server, Password, undefined,
+		   undefined).
+
+check_password(User, Server, _Password, _Digest,
+	       _DigestGen) ->
+    case
+      ejabberd_auth:is_user_exists_in_other_modules(?MODULE,
+						    User, Server)
+	of
+      %% If user exists in other module, reject anonnymous authentication
+      true -> false;
+      %% If we are not sure whether the user exists in other module, reject anon auth
+      maybe -> false;
+      false -> login(User, Server)
     end.
 
 login(User, Server) ->
     case is_login_anonymous_enabled(Server) of
-	false -> false;
-	true  ->
-	    case anonymous_user_exist(User, Server) of
-		%% Reject the login if an anonymous user with the same login
-		%% is already logged and if multiple login has not been enable
-		%% in the config file.
-		true  -> allow_multiple_connections(Server);
-		%% Accept login and add user to the anonymous table
-		false -> true
-	    end
+      false -> false;
+      true ->
+	  case anonymous_user_exist(User, Server) of
+	    %% Reject the login if an anonymous user with the same login
+	    %% is already logged and if multiple login has not been enable
+	    %% in the config file.
+	    true -> allow_multiple_connections(Server);
+	    %% Accept login and add user to the anonymous table
+	    false -> true
+	  end
     end.
 
 %% When anonymous login is enabled, check that the user is permanent before
 %% changing its password
 set_password(User, Server, _Password) ->
     case anonymous_user_exist(User, Server) of
-	true ->
-	    ok;
-	false ->
-	    {error, not_allowed}
+      true -> ok;
+      false -> {error, not_allowed}
     end.
 
 %% When anonymous login is enabled, check if permanent users are allowed on

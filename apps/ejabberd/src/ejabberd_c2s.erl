@@ -66,7 +66,6 @@
 
 -include("ejabberd.hrl").
 -include("jlib.hrl").
--include("mod_privacy.hrl").
 
 -define(SETS, gb_sets).
 -define(DICT, dict).
@@ -97,7 +96,7 @@
 		pres_last, pres_pri,
 		pres_timestamp,
 		pres_invis = false,
-		privacy_list = #userlist{},
+		privacy_list = {},
 		conn = unknown,
 		auth_module = unknown,
 		ip,
@@ -527,7 +526,7 @@ wait_for_auth({xmlstreamelement, El}, StateData) ->
 	      of
 	    true ->
 		DGen = fun (PW) ->
-			       p1_sha:sha(<<(StateData#state.streamid)/binary, PW/binary>>)
+			       sha:sha(<<(StateData#state.streamid)/binary, PW/binary>>)
 		       end,
 		case ejabberd_auth:check_password_with_authmodule(U,
 								  StateData#state.server,
@@ -559,7 +558,7 @@ wait_for_auth({xmlstreamelement, El}, StateData) ->
 			Ts1 = [LJID | Ts],
 			PrivList = ejabberd_hooks:run_fold(privacy_get_user_list,
 						    StateData#state.server,
-						    #userlist{},
+						    {},
 						    [U, StateData#state.server]),
 			NewStateData = StateData#state{user = U,
 							resource = R,
@@ -628,6 +627,8 @@ wait_for_feature_request({xmlstreamelement, El},
 	  when not ((SockMod == gen_tcp) and TLSRequired) ->
 	  Mech = xml:get_attr_s(<<"mechanism">>, Attrs),
 	  ClientIn = jlib:decode_base64(xml:get_cdata(Els)),
+    ?INFO_MSG("Attrs is ~p, ClientIn is ~p, Els is ~p",
+        [Attrs, ClientIn, Els]),
 	  case cyrsasl:server_start(StateData#state.sasl_state,
 				    Mech, ClientIn)
 	      of
@@ -784,6 +785,8 @@ wait_for_sasl_response({xmlstreamelement, El},
     case {xml:get_attr_s(<<"xmlns">>, Attrs), Name} of
       {?NS_SASL, <<"response">>} ->
 	  ClientIn = jlib:decode_base64(xml:get_cdata(Els)),
+    ?INFO_MSG("ClientIn is ~p, ~p",
+        [ClientIn, Els]),
 	  case cyrsasl:server_step(StateData#state.sasl_state,
 				   ClientIn)
 	      of
@@ -837,6 +840,7 @@ wait_for_sasl_response({xmlstreamelement, El},
 			       StateData#state{sasl_state = NewSASLState});
 	    {error, Error, Username} ->
 		IP = peerip(StateData#state.sockmod, StateData#state.socket),
+		?INFO_MSG("Failed error is ~p", [Error]),
 		?INFO_MSG("(~w) Failed authentication for ~s@~s from IP ~s",
 		       [StateData#state.socket,
 			Username, StateData#state.server, jlib:ip_to_list(IP)]),
@@ -993,7 +997,7 @@ wait_for_session({xmlstreamelement, El}, StateData) ->
 		    PrivList =
 			ejabberd_hooks:run_fold(
 			  privacy_get_user_list, StateData#state.server,
-			  #userlist{},
+			  {},
 			  [U, StateData#state.server]),
 		    SID = {now(), self()},
 		    Conn = get_conn_type(StateData),
@@ -1650,6 +1654,7 @@ terminate(_Reason, StateName, StateData) ->
 change_shaper(StateData, JID) ->
     Shaper = acl:match_rule(StateData#state.server,
 			    StateData#state.shaper, JID),
+    ?INFO_MSG("change_shaper Shaper is (~p), StateData is (~p)", [Shaper, StateData]),
     (StateData#state.sockmod):change_shaper(StateData#state.socket,
 					    Shaper).
 

@@ -5,7 +5,7 @@
 %%% Created : 18 Jul 2003 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2011   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2013   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -25,6 +25,7 @@
 %%%----------------------------------------------------------------------
 
 -module(ejabberd_tmp_sup).
+
 -author('alexey@process-one.net').
 
 -export([start_link/2, init/1]).
@@ -32,8 +33,8 @@
 start_link(Name, Module) ->
     supervisor:start_link({local, Name}, ?MODULE, Module).
 
-
 init(Module) ->
-    {ok, {{simple_one_for_one, 10, 1},
-	  [{undefined, {Module, start_link, []},
-	    temporary, brutal_kill, worker, [Module]}]}}.
+    {ok,
+     {{simple_one_for_one, 10, 1},
+      [{undefined, {Module, start_link, []}, temporary,
+	brutal_kill, worker, [Module]}]}}.

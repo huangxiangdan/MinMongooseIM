@@ -36,12 +36,11 @@
 start_link() ->
     proc_lib:start_link(?MODULE, init, [self()]).
 
--spec get_string() -> string().
 get_string() ->
     ?PROC_NAME ! {self(), get_random, 65536*65536},
     receive
         {random, R} ->
-            integer_to_list(R)
+            jlib:integer_to_binary(R)
     end.
 
 -spec init(pid()) -> no_return().
