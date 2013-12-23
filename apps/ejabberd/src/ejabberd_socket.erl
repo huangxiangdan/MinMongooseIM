@@ -51,10 +51,10 @@
 
 -type sockmod() :: ejabberd_http_poll |
                    ejabberd_http_bind |
-                   gen_tcp | ejabberd_tls | ezlib.
+                   gen_tcp | p1_tls | ezlib.
 -type receiver() :: pid () | atom().
 -type socket() :: pid() | inet:socket() |
-                  ejabberd_tls:tls_socket() |
+                  p1_tls:tls_socket() |
                   ezlib:zlib_socket() |
                   ejabberd_http_bind:bind_socket() |
                   ejabberd_http_poll:poll_socket().
@@ -156,12 +156,12 @@ connect(Addr, Port, Opts, Timeout) ->
     end.
 
 starttls(SocketData, TLSOpts) ->
-    {ok, TLSSocket} = ejabberd_tls:tcp_to_tls(SocketData#socket_state.socket, TLSOpts),
+    {ok, TLSSocket} = p1_tls:tcp_to_tls(SocketData#socket_state.socket, TLSOpts),
     ejabberd_receiver:starttls(SocketData#socket_state.receiver, TLSSocket),
     SocketData#socket_state{socket = TLSSocket, sockmod = tls}.
 
 starttls(SocketData, TLSOpts, Data) ->
-    {ok, TLSSocket} = ejabberd_tls:tcp_to_tls(SocketData#socket_state.socket, TLSOpts),
+    {ok, TLSSocket} = p1_tls:tcp_to_tls(SocketData#socket_state.socket, TLSOpts),
     ejabberd_receiver:starttls(SocketData#socket_state.receiver, TLSSocket),
     send(SocketData, Data),
     SocketData#socket_state{socket = TLSSocket, sockmod = tls}.
@@ -222,10 +222,10 @@ get_sockmod(SocketData) ->
     SocketData#socket_state.sockmod.
 
 get_peer_certificate(SocketData) ->
-    ejabberd_tls:get_peer_certificate(SocketData#socket_state.socket).
+    p1_tls:get_peer_certificate(SocketData#socket_state.socket).
 
 get_verify_result(SocketData) ->
-    ejabberd_tls:get_verify_result(SocketData#socket_state.socket).
+    p1_tls:get_verify_result(SocketData#socket_state.socket).
 
 close(SocketData) ->
     ejabberd_receiver:close(SocketData#socket_state.receiver).

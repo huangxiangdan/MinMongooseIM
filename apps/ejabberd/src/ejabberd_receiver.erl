@@ -48,8 +48,8 @@
 -include("jlib.hrl").
 
 -record(state,
-	{socket :: inet:socket() | ejabberd_tls:tls_socket() | ejabberd_zlib:zlib_socket(),
-         sock_mod = gen_tcp :: gen_tcp | ejabberd_tls | ejabberd_zlib,
+	{socket :: inet:socket() | p1_tls:tls_socket() | ejabberd_zlib:zlib_socket(),
+         sock_mod = gen_tcp :: gen_tcp | p1_tls | ejabberd_zlib,
          shaper_state = none :: shaper:shaper(),
          c2s_pid :: pid(),
 	 max_stanza_size = infinity :: non_neg_integer() | infinity,
@@ -101,7 +101,7 @@ change_shaper(Pid, Shaper) ->
 
 reset_stream(Pid) -> do_call(Pid, reset_stream).
 
--spec starttls(pid(), ejabberd_tls:tls_socket()) -> ok.
+-spec starttls(pid(), p1_tls:tls_socket()) -> ok.
 
 starttls(Pid, TLSSocket) ->
     do_call(Pid, {starttls, TLSSocket}).
@@ -163,9 +163,9 @@ handle_call({starttls, TLSSocket}, _From,
     close_stream(XMLStreamState),
     NewXMLStreamState = xml_stream:new(C2SPid, MaxStanzaSize),
     NewState = State#state{socket = TLSSocket,
-			   sock_mod = ejabberd_tls,
+			   sock_mod = p1_tls,
 			   xml_stream_state = NewXMLStreamState},
-    case ejabberd_tls:recv_data(TLSSocket, <<"">>) of
+    case p1_tls:recv_data(TLSSocket, <<"">>) of
 	{ok, TLSData} ->
 	    {reply, ok, process_data(TLSData, NewState), ?HIBERNATE_TIMEOUT};
 	{error, _Reason} ->
@@ -240,8 +240,8 @@ handle_info({Tag, _TCPSocket, Data},
 	   (Tag == ejabberd_xml) ->
     ?INFO_MSG("ejabberd_receiver handle_info Tag: ~p (~p), ~p",[Tag, _TCPSocket, Data]),
     case SockMod of
-      ejabberd_tls ->
-	  case ejabberd_tls:recv_data(Socket, Data) of
+      p1_tls ->
+	  case p1_tls:recv_data(Socket, Data) of
 	    {ok, TLSData} ->
 		{noreply, process_data(TLSData, State),
 		 ?HIBERNATE_TIMEOUT};
