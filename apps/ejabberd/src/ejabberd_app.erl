@@ -43,7 +43,7 @@ start(normal, _Args) ->
     write_pid_file(),
     start_apps(),
     ejabberd:check_app(ejabberd),
-    % randoms:start(),
+    randoms:start(),
     db_init(),
     start(),
     translate:start(),

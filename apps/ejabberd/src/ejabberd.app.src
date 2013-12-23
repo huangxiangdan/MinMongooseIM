@@ -2,10 +2,9 @@
 
 {application, ejabberd,
  [{description, "ejabberd"},
-  {vsn, "2.1.8"},
+  {vsn, "community"},
   {modules, []},
-  {registered, [
-               ]},
+  {registered, []},
   {applications, [kernel, stdlib]},
   {env, []},
   {mod, {ejabberd_app, []}}]}.

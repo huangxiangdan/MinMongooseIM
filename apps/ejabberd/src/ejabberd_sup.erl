@@ -92,6 +92,14 @@ init([]) ->
          infinity,
          supervisor,
          [ejabberd_tmp_sup]},
+    FrontendSocketSupervisor =
+        {ejabberd_frontend_socket_sup,
+         {ejabberd_tmp_sup, start_link,
+          [ejabberd_frontend_socket_sup, ejabberd_frontend_socket]},
+         permanent,
+         infinity,
+         supervisor,
+         [ejabberd_tmp_sup]},
     IQSupervisor =
         {ejabberd_iq_sup,
          {ejabberd_tmp_sup, start_link,
@@ -117,14 +125,14 @@ init([]) ->
          [ejabberd_sm_backend_sup]},
 
     {ok, {{one_for_one, 10, 1},
-          [Randoms,
-           Hooks,
+          [Hooks,
            SMBackendSupervisor,
            Router,
            SM,
            Local,
            ReceiverSupervisor,
            C2SSupervisor,
+           FrontendSocketSupervisor,
            IQSupervisor,
            STUNSupervisor,
            Listener]}}.
