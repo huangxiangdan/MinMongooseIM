@@ -191,7 +191,7 @@ process(["help" | Mode]) ->
       print_usage_help(MaxC, ShCode),
       ?STATUS_SUCCESS;
   [CmdString | _] ->
-      CmdStringU = re:replace(
+      CmdStringU = ejabberd_regexp:replace(
                            list_to_binary(CmdString), <<"-">>, <<"_">>),
       print_usage_commands(binary_to_list(CmdStringU), MaxC, ShCode),
       ?STATUS_SUCCESS
@@ -280,7 +280,7 @@ try_call_command(Args, Auth, AccessCommands) ->
 
 %% @spec (Args::[string()], Auth, AccessCommands) -> string() | integer() | {string(), integer()} | {error, ErrorType}
 call_command([CmdString | Args], Auth, AccessCommands) ->
-    CmdStringU = re:replace(
+    CmdStringU = ejabberd_regexp:replace(
                    list_to_binary(CmdString), <<"-">>, <<"_">>),
     Command = list_to_atom(binary_to_list(CmdStringU)),
     case ejabberd_commands:get_command_format(Command) of
@@ -686,10 +686,10 @@ filter_commands(All, SubString) ->
     end.
 
 filter_commands_regexp(All, Glob) ->
-    RegExp = re:sh_to_awk(list_to_binary(Glob)),
+    RegExp = ejabberd_regexp:sh_to_awk(list_to_binary(Glob)),
     lists:filter(
       fun(Command) ->
-        case re:run(list_to_binary(Command), RegExp) of
+        case ejabberd_regexp:run(list_to_binary(Command), RegExp) of
       match ->
           true;
       nomatch ->

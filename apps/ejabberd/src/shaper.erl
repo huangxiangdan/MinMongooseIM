@@ -32,6 +32,7 @@
          transform_options/1, load_from_config/0]).
 
 -include("ejabberd.hrl").
+-include("logger.hrl").
 
 -record(maxrate, {maxrate  = 0   :: integer(),
                   lastrate = 0.0 :: float(),

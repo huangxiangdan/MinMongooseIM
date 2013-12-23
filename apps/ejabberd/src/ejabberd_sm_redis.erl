@@ -109,7 +109,7 @@ cleanup(Node) ->
     Hashes = ejabberd_redis:cmd(["SMEMBERS", n(Node)]),
     ejabberd_redis:cmd(["DEL", n(Node)]),
     lists:foreach(fun(H) ->
-                          [_, U, S, R | SID] = re:split(H, ":"),
+                          [_, U, S, R | SID] = ejabberd_regexp:split(H, ":"),
                           delete_session(SID, U, S, R)
                   end, Hashes).
 

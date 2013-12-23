@@ -45,6 +45,10 @@
 -type scram() :: #scram{}.
 
 -define(SCRAM_DEFAULT_ITERATION_COUNT, 4096).
+
+-ifdef(LAGER).
+-else.
+-define(LAGER, true).
 %%-define(DBGFSM, true).
 
 %% ---------------------------------
@@ -68,6 +72,7 @@
 
 -define(CRITICAL_MSG(Format, Args),
     lager:critical(Format, Args)).
+-endif.
 
 -record(session, {sid :: tuple(),
                   usr :: {binary(), binary(), binary()},

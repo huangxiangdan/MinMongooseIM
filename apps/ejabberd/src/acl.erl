@@ -29,10 +29,11 @@
 -author('alexey@process-one.net').
 
 -export([start/0, to_record/3, add/3, add_list/3,
-         add_local/3, add_list_local/3, 
+         add_local/3, add_list_local/3, load_from_config/0,
 	 match_rule/3, match_acl/3, transform_options/1]).
 
 -include("ejabberd.hrl").
+-include("logger.hrl").
 -include("jlib.hrl").
 
 -record(acl, {aclname, aclspec}).
@@ -180,20 +181,16 @@ add_access(Host, Access, Rules) ->
 
 load_from_config() ->
     Hosts = [global|?MYHOSTS],
-    ?INFO_MSG("Hosts ~p", [Hosts]),
     lists:foreach(
       fun(Host) ->
               ACLs = ejabberd_config:get_option(
                        {acl, Host}, fun(V) -> V end, []),
               AccessRules = ejabberd_config:get_option(
                               {access, Host}, fun(V) -> V end, []),
-              ?INFO_MSG("ACLs ~p, AccessRules ~p", [ACLs, AccessRules]),
               lists:foreach(
                 fun({ACLName, SpecList}) ->
-                        ?INFO_MSG("SpecList ~p", [SpecList]),
                         lists:foreach(
                           fun({ACLType, ACLSpecs}) when is_list(ACLSpecs) ->
-                                  ?INFO_MSG("ACLSpecs ~p", [lists:flatten(ACLSpecs)]),
                                   lists:foreach(
                                     fun(ACLSpec) ->
                                             add(Host, ACLName,
@@ -350,7 +347,7 @@ match_acl(ACL, JID, Host) ->
           ets:lookup(acl, {ACL, global})).
 
 is_regexp_match(String, RegExp) ->
-    case re:run(String, RegExp) of
+    case ejabberd_regexp:run(String, RegExp) of
       nomatch -> false;
       match -> true;
       {error, ErrDesc} ->
@@ -361,7 +358,7 @@ is_regexp_match(String, RegExp) ->
 
 is_glob_match(String, Glob) ->
     is_regexp_match(String,
-		    re:sh_to_awk(Glob)).
+		    ejabberd_regexp:sh_to_awk(Glob)).
 
 is_ip_match({_, _, _, _} = IP, {_, _, _, _} = Net, Mask) ->
     IPInt = ip_to_integer(IP),

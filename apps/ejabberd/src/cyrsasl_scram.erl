@@ -62,7 +62,7 @@ mech_new(_Host, GetPassword, _CheckPassword,
     {ok, #state{step = 2, get_password = GetPassword}}.
 
 mech_step(#state{step = 2} = State, ClientIn) ->
-    case re:split(ClientIn, <<",">>, [{return, binary}]) of
+    case ejabberd_regexp:split(ClientIn, <<",">>, [{return, binary}]) of
       [_CBind, _AuthorizationIdentity, _UserNameAttribute, _ClientNonceAttribute, ExtensionAttribute | _]
     when ExtensionAttribute /= [] ->
     {error, <<"protocol-error-extension-not-supported">>};

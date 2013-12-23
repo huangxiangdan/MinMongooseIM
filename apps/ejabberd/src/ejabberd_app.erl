@@ -5,7 +5,7 @@
 %%% Created : 31 Jan 2003 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2011   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2013   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -29,44 +29,43 @@
 
 -behaviour(application).
 
--export([start_modules/0,start/2, get_log_path/0, prep_stop/1, stop/1]).
+-export([start_modules/0,start/2, prep_stop/1, stop/1, init/0]).
 
 -include("ejabberd.hrl").
-
+-include("logger.hrl").
 
 %%%
 %%% Application API
 %%%
 
 start(normal, _Args) ->
-    ejabberd_loglevel:init(),
-    ejabberd_loglevel:set(4),
+    ejabberd_logger:start(),
     write_pid_file(),
+    start_apps(),
+    ejabberd:check_app(ejabberd),
+    % randoms:start(),
     db_init(),
-    sha:start(),
-
-    % load_drivers([tls_drv, expat_erl]),
+    start(),
     translate:start(),
     ejabberd_ctl:init(),
     ejabberd_commands:init(),
+    ejabberd_admin:start(),
     gen_mod:start(),
-    ?INFO_MSG("application start", []),
     ejabberd_config:start(),
-    ejabberd_check:config(),
+    set_loglevel_from_config(),
     acl:start(),
     shaper:start(),
-    maybe_start_alarms(),
     connect_nodes(),
-    {ok, _} = Sup = ejabberd_sup:start_link(),
+    Sup = ejabberd_sup:start_link(),
+    % ejabberd_rdbms:start(),
     ejabberd_auth:start(),
     cyrsasl:start(),
-    %% Profiling
-    %%ejabberd_debug:eprof_start(),
-    %%ejabberd_debug:fprof_start(),
+    % Profiling
+    %ejabberd_debug:eprof_start(),
+    %ejabberd_debug:fprof_start(),
     maybe_add_nameservers(),
     start_modules(),
     ejabberd_listener:start_listeners(),
-    ejabberd_admin:start(),
     ?INFO_MSG("ejabberd ~s is started in the node ~p", [?VERSION, node()]),
     Sup;
 start(_, _) ->
@@ -76,9 +75,10 @@ start(_, _) ->
 %% This function is called when an application is about to be stopped,
 %% before shutting down the processes of the application.
 prep_stop(State) ->
+    ejabberd_listener:stop_listeners(),
     stop_modules(),
+    ejabberd_admin:stop(),
     broadcast_c2s_shutdown(),
-    mod_websockets:stop(),
     timer:sleep(5000),
     State.
 
@@ -93,98 +93,95 @@ stop(_State) ->
 %%%
 %%% Internal functions
 %%%
--spec db_init() -> list().
+
+start() ->
+    spawn_link(?MODULE, init, []).
+
+init() ->
+    register(ejabberd, self()),
+    loop().
+
+loop() ->
+    receive
+	_ ->
+	    loop()
+    end.
+
 db_init() ->
     case mnesia:system_info(extra_db_nodes) of
-        [] ->
-            application:stop(mnesia),
-            mnesia:create_schema([node()]),
-            application:start(mnesia, permanent);
-        _ ->
-            ok
+	[] ->
+	    mnesia:create_schema([node()]);
+	_ ->
+	    ok
     end,
+    ejabberd:start_app(mnesia, permanent),
     mnesia:wait_for_tables(mnesia:system_info(local_tables), infinity).
 
 %% Start all the modules in all the hosts
 start_modules() ->
     lists:foreach(
       fun(Host) ->
-              case ejabberd_config:get_local_option({modules, Host}) of
-                  undefined ->
-                      ok;
-                  Modules ->
-                      lists:foreach(
-                        fun({Module, Args}) ->
-                                gen_mod:start_module(Host, Module, Args)
-                        end, Modules)
-              end
+              Modules = ejabberd_config:get_option(
+                          {modules, Host},
+                          fun(Mods) ->
+                                  lists:map(
+                                    fun({M, A}) when is_atom(M), is_list(A) ->
+                                            {M, A}
+                                    end, Mods)
+                          end, []),
+              lists:foreach(
+                fun({Module, Args}) ->
+                        gen_mod:start_module(Host, Module, Args)
+                end, Modules)
       end, ?MYHOSTS).
 
 %% Stop all the modules in all the hosts
 stop_modules() ->
     lists:foreach(
       fun(Host) ->
-              case ejabberd_config:get_local_option({modules, Host}) of
-                  undefined ->
-                      ok;
-                  Modules ->
-                      lists:foreach(
-                        fun({Module, _Args}) ->
-                                gen_mod:stop_module_keep_config(Host, Module)
-                        end, Modules)
-              end
+              Modules = ejabberd_config:get_option(
+                          {modules, Host},
+                          fun(Mods) ->
+                                  lists:map(
+                                    fun({M, A}) when is_atom(M), is_list(A) ->
+                                            {M, A}
+                                    end, Mods)
+                          end, []),
+              lists:foreach(
+                fun({Module, _Args}) ->
+                        gen_mod:stop_module_keep_config(Host, Module)
+                end, Modules)
       end, ?MYHOSTS).
 
-maybe_start_alarms() ->
-    case ejabberd_config:get_local_option(alarms) of
-        undefined ->
-            ok;
-        Env when is_list(Env) ->
-            [application:set_env(alarms, K, V) || {K, V} <- Env],
-            alarms:start()
-    end.
-
 connect_nodes() ->
-    case ejabberd_config:get_local_option(cluster_nodes) of
-        undefined ->
-            ok;
-        Nodes when is_list(Nodes) ->
-            lists:foreach(fun(Node) ->
-                                  net_kernel:connect_node(Node)
-                          end, Nodes)
-    end.
-
-%% @spec () -> string()
-%% @doc Returns the full path to the ejabberd log file.
-%% It first checks for application configuration parameter 'log_path'.
-%% If not defined it checks the environment variable EJABBERD_LOG_PATH.
-%% And if that one is neither defined, returns the default value:
-%% "ejabberd.log" in current directory.
-get_log_path() ->
-    case application:get_env(log_path) of
-        {ok, Path} ->
-            Path;
-        undefined ->
-            case os:getenv("EJABBERD_LOG_PATH") of
-                false ->
-                    ?LOG_PATH;
-                Path ->
-                    Path
-            end
-    end.
+    Nodes = ejabberd_config:get_option(
+              cluster_nodes,
+              fun(Ns) ->
+                      true = lists:all(fun is_atom/1, Ns),
+                      Ns
+              end, []),
+    lists:foreach(fun(Node) ->
+                          net_kernel:connect_node(Node)
+                  end, Nodes).
 
 %% If ejabberd is running on some Windows machine, get nameservers and add to Erlang
 maybe_add_nameservers() ->
     case os:type() of
-        _ -> ok
+	{win32, _} -> add_windows_nameservers();
+	_ -> ok
     end.
+
+add_windows_nameservers() ->
+    IPTs = win32_dns:get_nameservers(),
+    ?INFO_MSG("Adding machine's DNS IPs to Erlang system:~n~p", [IPTs]),
+    lists:foreach(fun(IPT) -> inet_db:add_ns(IPT) end, IPTs).
 
 
 broadcast_c2s_shutdown() ->
     Children = supervisor:which_children(ejabberd_c2s_sup),
     lists:foreach(
       fun({_, C2SPid, _, _}) ->
-              C2SPid ! system_shutdown
+	      C2SPid ! system_shutdown
       end, Children).
 
 %%%
@@ -193,41 +190,43 @@ broadcast_c2s_shutdown() ->
 
 write_pid_file() ->
     case ejabberd:get_pid_file() of
-        false ->
-            ok;
-        PidFilename ->
-            write_pid_file(os:getpid(), PidFilename)
+	false ->
+	    ok;
+	PidFilename ->
+	    write_pid_file(os:getpid(), PidFilename)
     end.
 
 write_pid_file(Pid, PidFilename) ->
     case file:open(PidFilename, [write]) of
-        {ok, Fd} ->
-            io:format(Fd, "~s~n", [Pid]),
-            file:close(Fd);
-        {error, Reason} ->
-            ?ERROR_MSG("Cannot write PID file ~s~nReason: ~p", [PidFilename, Reason]),
-            throw({cannot_write_pid_file, PidFilename, Reason})
+	{ok, Fd} ->
+	    io:format(Fd, "~s~n", [Pid]),
+	    file:close(Fd);
+	{error, Reason} ->
+	    ?ERROR_MSG("Cannot write PID file ~s~nReason: ~p", [PidFilename, Reason]),
+	    throw({cannot_write_pid_file, PidFilename, Reason})
     end.
 
 delete_pid_file() ->
     case ejabberd:get_pid_file() of
-        false ->
-            ok;
-        PidFilename ->
-            file:delete(PidFilename)
+	false ->
+	    ok;
+	PidFilename ->
+	    file:delete(PidFilename)
     end.
 
--spec load_drivers(list(atom())) -> ok.
-load_drivers([]) ->
-    ok;
-load_drivers([Driver | Rest]) ->
-    case erl_ddll:load_driver(ejabberd:get_so_path(), Driver) of
-        ok ->
-            load_drivers(Rest);
-        {error, already_loaded} ->
-            load_drivers(Rest);
-        {error, Reason} ->
-            ?CRITICAL_MSG("unable to load driver 'expat_erl': ~s",
-                          [erl_ddll:format_error(Reason)]),
-            exit({driver_loading_failed, Driver, Reason})
-    end.
+set_loglevel_from_config() ->
+    Level = ejabberd_config:get_option(
+              loglevel,
+              fun(P) when P>=0, P=<5 -> P end,
+              4),
+    ejabberd_logger:set(Level).
+
+start_apps() ->
+    ejabberd:start_app(sasl),
+    ejabberd:start_app(ssl),
+    % ejabberd:start_app(p1_yaml),
+    ejabberd:start_app(p1_tls),
+    ejabberd:start_app(p1_xml),
+    ejabberd:start_app(p1_stringprep).
+    % ejabberd:start_app(p1_zlib),
+    % ejabberd:start_app(p1_cache_tab).

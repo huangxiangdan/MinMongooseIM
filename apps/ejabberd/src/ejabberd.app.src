@@ -6,7 +6,7 @@
   {modules, []},
   {registered, [
                ]},
-  {applications, [kernel, stdlib, sasl, mnesia, public_key, ssl, crypto, p1_stringprep, inets, lager, ranch, p1_tls, p1_xml]},
+  {applications, [kernel, stdlib]},
   {env, []},
   {mod, {ejabberd_app, []}}]}.
 
