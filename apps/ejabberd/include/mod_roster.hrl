@@ -19,27 +19,24 @@
 %%%
 %%%----------------------------------------------------------------------
 
--record(adhoc_request,
+-record(roster,
 {
-    lang = <<"">>      :: binary(),
-    node = <<"">>      :: binary(),
-    sessionid = <<"">> :: binary(),
-    action = <<"">>    :: binary(),
-    xdata = false      :: false | xmlel(),
-    others = []        :: [xmlel()]
+    usj = {<<>>, <<>>, {<<>>, <<>>, <<>>}} :: {binary(), binary(), ljid()} | '_',
+    us = {<<>>, <<>>}                      :: {binary(), binary()} | '_',
+    jid = {<<>>, <<>>, <<>>}               :: ljid(),
+    name = <<>>                            :: binary() | '_',
+    subscription = none                    :: subscription() | '_',
+    ask = none                             :: ask() | '_',
+    groups = []                            :: [binary()] | '_',
+    askmessage = <<"">>                    :: binary() | '_',
+    xs = []                                :: [xmlel()] | '_'
 }).
 
--record(adhoc_response,
+-record(roster_version,
 {
-    lang = <<"">>          :: binary(),
-    node = <<"">>          :: binary(),
-    sessionid = <<"">>     :: binary(),
-    status                 :: atom(),
-    defaultaction = <<"">> :: binary(),
-    actions       = []     :: [binary()],
-    notes         = []     :: [{binary(), binary()}],
-    elements      = []     :: [xmlel()]
+    us = {<<>>, <<>>} :: {binary(), binary()},
+    version = <<>>    :: binary()
 }).
 
--type adhoc_request() :: #adhoc_request{}.
--type adhoc_response() :: #adhoc_response{}.
+-type ask() :: none | in | out | both | subscribe | unsubscribe.
+-type subscription() :: none | both | from | to | remove.

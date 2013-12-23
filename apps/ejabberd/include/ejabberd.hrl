@@ -1,6 +1,6 @@
 %%%----------------------------------------------------------------------
 %%%
-%%% ejabberd, Copyright (C) 2002-2011   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2013   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -21,23 +21,26 @@
 
 %% This macro returns a string of the ejabberd version running, e.g. "2.3.4"
 %% If the ejabberd application description isn't loaded, returns atom: undefined
--define(VERSION, element(2, application:get_key(ejabberd,vsn))).
+-define(VERSION, ejabberd_config:get_version()).
 
--define(MYHOSTS, ejabberd_config:get_global_option(hosts)).
--define(MYNAME,  hd(ejabberd_config:get_global_option(hosts))).
--define(MYLANG,  ejabberd_config:get_global_option(language)).
+-define(MYHOSTS, ejabberd_config:get_myhosts()).
 
--define(MSGS_DIR,    "msgs").
--define(CONFIG_PATH, "etc/ejabberd.cfg").
--define(LOG_PATH,    "log/ejabberd.log").
+-define(MYNAME, hd(ejabberd_config:get_myhosts())).
 
--define(EJABBERD_URI, "http://www.process-one.net/en/ejabberd/").
+-define(MYLANG, ejabberd_config:get_mylang()).
 
--define(S2STIMEOUT, 600000).
+-define(MSGS_DIR, filename:join(["priv", "msgs"])).
 
+-define(CONFIG_PATH, <<"ejabberd.cfg">>).
+
+-define(LOG_PATH, <<"ejabberd.log">>).
+
+-define(EJABBERD_URI, <<"http://www.process-one.net/en/ejabberd/">>).
+
+%%-define(DBGFSM, true).
 
 -record(scram,
-  {storedkey = <<"">>,
+	{storedkey = <<"">>,
          serverkey = <<"">>,
          salt = <<"">>,
          iterationcount = 0 :: integer()}).
@@ -45,38 +48,3 @@
 -type scram() :: #scram{}.
 
 -define(SCRAM_DEFAULT_ITERATION_COUNT, 4096).
-
--ifdef(LAGER).
--else.
--define(LAGER, true).
-%%-define(DBGFSM, true).
-
-%% ---------------------------------
-%% Logging mechanism
-
-%% Print in standard output
--define(PRINT(Format, Args),
-    io:format(Format, Args)).
-
--define(DEBUG(Format, Args),
-    lager:debug(Format, Args)).
-
--define(INFO_MSG(Format, Args),
-    lager:info(Format, Args)).
-
--define(WARNING_MSG(Format, Args),
-    lager:warning(Format, Args)).
-
--define(ERROR_MSG(Format, Args),
-    lager:error(Format, Args)).
-
--define(CRITICAL_MSG(Format, Args),
-    lager:critical(Format, Args)).
--endif.
-
--ifdef(no_binary_to_integer).
-
--import(ejabberd_binary, [binary_to_integer/1,
-                          integer_to_binary/1]).
-
--endif.
