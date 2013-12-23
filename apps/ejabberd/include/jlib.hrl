@@ -20,7 +20,7 @@
 %%%----------------------------------------------------------------------
 
 %% Load record definitions.
--include_lib("exml/include/exml.hrl").
+-include_lib("p1_xml/include/xml.hrl").
 -record(attr, {name,
          label,
          required = false,
@@ -46,10 +46,6 @@
               min = 0,
               max = infinity,
               default}).
-
--type(xmlel() :: #xmlel{}).
--type(cdata() :: {xmlcdata, CData::binary()}).
--type(attr() :: {Name::binary(), Value::binary()}).
 
 
 -define(NS_DISCO_ITEMS,  <<"http://jabber.org/protocol/disco#items">>).
