@@ -31,7 +31,7 @@
 
 -define(MSGS_DIR, filename:join(["priv", "msgs"])).
 
--define(CONFIG_PATH, <<"ejabberd.cfg">>).
+-define(CONFIG_PATH, <<"ejabberd.yml">>).
 
 -define(LOG_PATH, <<"ejabberd.log">>).
 
