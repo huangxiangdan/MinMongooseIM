@@ -230,16 +230,24 @@ get_vh_registered_users(Server) ->
 
 %% Return password of permanent user or false for anonymous users
 get_password(User, Server) ->
-    get_password(User, Server, "").
+    get_password(User, Server, <<"">>).
 
 get_password(User, Server, DefaultValue) ->
-    case anonymous_user_exist(User, Server) or login(User, Server) of
-	%% We return the default value if the user is anonymous
-	true ->
-	    DefaultValue;
-	%% We return the permanent user password otherwise
-	false ->
-	    false
+    case anonymous_user_exist(User, Server) or
+	   login(User, Server)
+	of
+      %% We return the default value if the user is anonymous
+      true -> DefaultValue;
+      %% We return the permanent user password otherwise
+      false -> false
+    end.
+
+get_password_s(User, Server) ->
+    case get_password(User, Server) of
+        false ->
+            <<"">>;
+        Password ->
+            Password
     end.
 
 %% Returns true if the user exists in the DB or if an anonymous user is logged

@@ -431,6 +431,7 @@ auth_modules(Server) ->
                    (V) when is_atom(V) ->
                         [V]
                 end, []),
+    ?INFO_MSG("methods is ~p", [Methods]),
     [jlib:binary_to_atom(<<"ejabberd_auth_",
                            (jlib:atom_to_binary(M))/binary>>)
      || M <- Methods].
