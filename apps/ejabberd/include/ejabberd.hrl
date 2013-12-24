@@ -33,7 +33,7 @@
 
 -define(CONFIG_PATH, <<"ejabberd.yml">>).
 
--define(LOG_PATH, <<"ejabberd.log">>).
+-define(LOG_PATH, "log/ejabberd.log").
 
 -define(EJABBERD_URI, <<"http://www.process-one.net/en/ejabberd/">>).
 
