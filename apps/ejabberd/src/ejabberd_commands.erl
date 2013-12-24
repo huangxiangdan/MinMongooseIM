@@ -5,7 +5,7 @@
 %%% Created : 20 May 2008 by Badlop <badlop@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2011   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2013   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -222,13 +222,15 @@
 
 -include("ejabberd_commands.hrl").
 -include("ejabberd.hrl").
+-include("logger.hrl").
 
 
 init() ->
     ets:new(ejabberd_commands, [named_table, set, public,
 				{keypos, #ejabberd_commands.name}]).
 
-%% @spec ([ejabberd_commands()]) -> ok
+-spec register_commands([ejabberd_commands()]) -> ok.
+
 %% @doc Register ejabberd commands.
 %% If a command is already registered, a warning is printed and the old command is preserved.
 register_commands(Commands) ->
@@ -243,7 +245,8 @@ register_commands(Commands) ->
       end,
       Commands).
 
-%% @spec ([ejabberd_commands()]) -> ok
+-spec unregister_commands([ejabberd_commands()]) -> ok.
+
 %% @doc Unregister ejabberd commands.
 unregister_commands(Commands) ->
     lists:foreach(
@@ -252,7 +255,8 @@ unregister_commands(Commands) ->
       end,
       Commands).
 
-%% @spec () -> [{Name::atom(), Args::[aterm()], Desc::string()}]
+-spec list_commands() -> [{atom(), [aterm()], string()}].
+
 %% @doc Get a list of all the available commands, arguments and description.
 list_commands() ->
     Commands = ets:match(ejabberd_commands,
@@ -262,7 +266,8 @@ list_commands() ->
 					    _ = '_'}),
     [{A, B, C} || [A, B, C] <- Commands].
 
-%% @spec (Name::atom()) -> {Args::[aterm()], Result::rterm()} | {error, command_unknown}
+-spec get_command_format(atom()) -> {[aterm()], rterm()} | {error, command_unknown}.
+
 %% @doc Get the format of arguments and result of a command.
 get_command_format(Name) ->
     Matched = ets:match(ejabberd_commands,
@@ -277,7 +282,8 @@ get_command_format(Name) ->
 	    {Args, Result}
     end.
 
-%% @spec (Name::atom()) -> ejabberd_commands() | command_not_found
+-spec get_command_definition(atom()) -> ejabberd_commands() | command_not_found.
+
 %% @doc Get the definition record of a command.
 get_command_definition(Name) ->
     case ets:lookup(ejabberd_commands, Name) of
@@ -313,6 +319,8 @@ execute_command2(Command, Arguments) ->
     Function = Command#ejabberd_commands.function,
     ?DEBUG("Executing command ~p:~p with Args=~p", [Module, Function, Arguments]),
     apply(Module, Function, Arguments).
+
+-spec get_tags_commands() -> [{string(), [string()]}].
 
 %% @spec () -> [{Tag::string(), [CommandName::string()]}]
 %% @doc Get all the tags and associated commands.
@@ -377,21 +385,17 @@ check_access_commands(AccessCommands, Auth, Method, Command, Arguments) ->
 	L when is_list(L) -> ok
     end.
 
+-spec check_auth(noauth) -> noauth_provided;
+                ({binary(), binary(), binary()}) -> {ok, binary(), binary()}.
+
 check_auth(noauth) ->
     no_auth_provided;
 check_auth({User, Server, Password}) ->
     %% Check the account exists and password is valid
-    AccountPass = ejabberd_auth:get_password_s(User, Server),
-    AccountPassMD5 = get_md5(AccountPass),
-    case Password of
-	AccountPass -> {ok, User, Server};
-	AccountPassMD5 -> {ok, User, Server};
+    case ejabberd_auth:check_password(User, Server, Password) of
+	true -> {ok, User, Server};
 	_ -> throw({error, invalid_account_data})
     end.
-
-get_md5(AccountPass) ->
-    lists:flatten([io_lib:format("~.16B", [X])
-		   || X <- binary_to_list(crypto:md5(AccountPass))]).
 
 check_access(all, _) ->
     true;

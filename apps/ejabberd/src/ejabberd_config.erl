@@ -28,10 +28,9 @@
 -author('alexey@process-one.net').
 
 -export([start/0, load_file/1, read_file/1,
-   add_global_option/2, add_local_option/2,
-   get_global_option/2, get_local_option/2,
+	 add_global_option/2, add_local_option/2,
+	 get_global_option/2, get_local_option/2,
          get_global_option/3, get_local_option/3,
-         get_local_option/1, get_global_option/1, 
          get_option/2, get_option/3, add_option/2,
          get_vh_by_auth_method/1, is_file_readable/1,
          get_version/0, get_myhosts/0, get_mylang/0,
@@ -40,6 +39,7 @@
          convert_to_yaml/1, convert_to_yaml/2]).
 
 -include("ejabberd.hrl").
+-include("logger.hrl").
 -include("ejabberd_config.hrl").
 -include_lib("kernel/include/file.hrl").
 
@@ -60,13 +60,12 @@ start() ->
             ok
     end,
     mnesia:create_table(local_config,
-      [{ram_copies, [node()]},
-       {local_content, true},
-       {attributes, record_info(fields, local_config)}]),
+			[{ram_copies, [node()]},
+			 {local_content, true},
+			 {attributes, record_info(fields, local_config)}]),
     mnesia:add_table_copy(local_config, node(), ram_copies),
     Config = get_ejabberd_config_path(),
     State = read_file(Config),
-    ?INFO_MSG("State is ~p", [State]),
     %% This start time is used by mod_last:
     {MegaSecs, Secs, _} = now(),
     UnixTime = MegaSecs*1000000 + Secs,
@@ -80,14 +79,14 @@ start() ->
 %% @spec () -> string()
 get_ejabberd_config_path() ->
     case application:get_env(config) of
-  {ok, Path} -> Path;
-  undefined ->
-      case os:getenv("EJABBERD_CONFIG_PATH") of
-    false ->
-        ?CONFIG_PATH;
-    Path ->
-        Path
-      end
+	{ok, Path} -> Path;
+	undefined ->
+	    case os:getenv("EJABBERD_CONFIG_PATH") of
+		false ->
+		    ?CONFIG_PATH;
+		Path ->
+		    Path
+	    end
     end.
 
 %% @doc Read the ejabberd configuration file.
@@ -159,7 +158,7 @@ get_plain_terms_file(File, Opts) when is_binary(File) ->
 get_plain_terms_file(File1, Opts) ->
     File = get_absolute_path(File1),
     case consult(File) of
-  {ok, Terms} ->
+	{ok, Terms} ->
             BinTerms = strings_to_binary(Terms),
             case proplists:get_bool(include_files, Opts) of
                 true ->
@@ -167,9 +166,9 @@ get_plain_terms_file(File1, Opts) ->
                 false ->
                     BinTerms
             end;
-  {error, Reason} ->
-      ?ERROR_MSG(Reason, []),
-      exit_or_halt(Reason)
+	{error, Reason} ->
+	    ?ERROR_MSG(Reason, []),
+	    exit_or_halt(Reason)
     end.
 
 consult(File) ->
@@ -200,37 +199,37 @@ consult(File) ->
 %% @spec (string()) -> string()
 get_absolute_path(File) ->
     case filename:pathtype(File) of
-  absolute ->
-      File;
-  relative ->
-      Config_path = get_ejabberd_config_path(),
-      Config_dir = filename:dirname(Config_path),
-      filename:absname_join(Config_dir, File)
+	absolute ->
+	    File;
+	relative ->
+	    Config_path = get_ejabberd_config_path(),
+	    Config_dir = filename:dirname(Config_path),
+	    filename:absname_join(Config_dir, File)
     end.
 
 
 search_hosts(Term, State) ->
     case Term of
-  {host, Host} ->
-      if
-    State#state.hosts == [] ->
-        add_hosts_to_option([Host], State);
-    true ->
-        ?ERROR_MSG("Can't load config file: "
-             "too many hosts definitions", []),
-        exit("too many hosts definitions")
-      end;
-  {hosts, Hosts} ->
-      if
-    State#state.hosts == [] ->
-        add_hosts_to_option(Hosts, State);
-    true ->
-        ?ERROR_MSG("Can't load config file: "
-             "too many hosts definitions", []),
-        exit("too many hosts definitions")
-      end;
-  _ ->
-      State
+	{host, Host} ->
+	    if
+		State#state.hosts == [] ->
+		    add_hosts_to_option([Host], State);
+		true ->
+		    ?ERROR_MSG("Can't load config file: "
+			       "too many hosts definitions", []),
+		    exit("too many hosts definitions")
+	    end;
+	{hosts, Hosts} ->
+	    if
+		State#state.hosts == [] ->
+		    add_hosts_to_option(Hosts, State);
+		true ->
+		    ?ERROR_MSG("Can't load config file: "
+			       "too many hosts definitions", []),
+		    exit("too many hosts definitions")
+	    end;
+	_ ->
+	    State
     end.
 
 add_hosts_to_option(Hosts, State) ->
@@ -243,12 +242,12 @@ normalize_hosts([], PrepHosts) ->
     lists:reverse(PrepHosts);
 normalize_hosts([Host|Hosts], PrepHosts) ->
     case jlib:nodeprep(iolist_to_binary(Host)) of
-  error ->
-      ?ERROR_MSG("Can't load config file: "
-           "invalid host name [~p]", [Host]),
-      exit("invalid hostname");
-  PrepHost ->
-      normalize_hosts(Hosts, [PrepHost|PrepHosts])
+	error ->
+	    ?ERROR_MSG("Can't load config file: "
+		       "invalid host name [~p]", [Host]),
+	    exit("invalid hostname");
+	PrepHost ->
+	    normalize_hosts(Hosts, [PrepHost|PrepHosts])
     end.
 
 
@@ -264,11 +263,11 @@ describe_config_problem(Filename, Reason) ->
 describe_config_problem(Filename, Reason, LineNumber) ->
     Text1 = lists:flatten("Problem loading ejabberd config file " ++ Filename),
     Text2 = lists:flatten(" approximately in the line "
-        ++ file:format_error(Reason)),
+			  ++ file:format_error(Reason)),
     ExitText = Text1 ++ Text2,
     Lines = get_config_lines(Filename, LineNumber, 10, 3),
     ?ERROR_MSG("The following lines from your configuration file might be"
-         " relevant to the error: ~n~s", [Lines]),
+	       " relevant to the error: ~n~s", [Lines]),
     ExitText.
 
 get_config_lines(Filename, TargetNumber, PreContext, PostContext) ->
@@ -286,21 +285,21 @@ get_config_lines2(_Fd, _NewLine, _CurrLine, [], R) ->
 get_config_lines2(Fd, Data, CurrLine, [NextWanted | LNumbers], R) when is_list(Data) ->
     NextL = io:get_line(Fd, no_prompt),
     if
-  CurrLine >= NextWanted ->
-      Line2 = [integer_to_list(CurrLine), ": " | Data],
-      get_config_lines2(Fd, NextL, CurrLine+1, LNumbers, [Line2 | R]);
-  true ->
-      get_config_lines2(Fd, NextL, CurrLine+1, [NextWanted | LNumbers], R)
+	CurrLine >= NextWanted ->
+	    Line2 = [integer_to_list(CurrLine), ": " | Data],
+	    get_config_lines2(Fd, NextL, CurrLine+1, LNumbers, [Line2 | R]);
+	true ->
+	    get_config_lines2(Fd, NextL, CurrLine+1, [NextWanted | LNumbers], R)
     end.
 
 %% If ejabberd isn't yet running in this node, then halt the node
 exit_or_halt(ExitText) ->
     case [Vsn || {ejabberd, _Desc, Vsn} <- application:which_applications()] of
-  [] ->
-      timer:sleep(1000),
-      halt(string:substr(ExitText, 1, 199));
-  [_] ->
-      exit(ExitText)
+	[] ->
+	    timer:sleep(1000),
+	    halt(string:substr(ExitText, 1, 199));
+	[_] ->
+	    exit(ExitText)
     end.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -348,19 +347,19 @@ include_config_file(Filename, Options) ->
 delete_disallowed(Disallowed, Terms) ->
     lists:foldl(
       fun(Dis, Ldis) ->
-        delete_disallowed2(Dis, Ldis)
+	      delete_disallowed2(Dis, Ldis)
       end,
       Terms,
       Disallowed).
 
 delete_disallowed2(Disallowed, [H|T]) ->
     case element(1, H) of
-  Disallowed ->
-      ?WARNING_MSG("The option '~p' is disallowed, "
-       "and will not be accepted", [Disallowed]),
-      delete_disallowed2(Disallowed, T);
-  _ ->
-      [H|delete_disallowed2(Disallowed, T)]
+	Disallowed ->
+	    ?WARNING_MSG("The option '~p' is disallowed, "
+			 "and will not be accepted", [Disallowed]),
+	    delete_disallowed2(Disallowed, T);
+	_ ->
+	    [H|delete_disallowed2(Disallowed, T)]
     end;
 delete_disallowed2(_, []) ->
     [].
@@ -373,12 +372,12 @@ keep_only_allowed(all, Terms) ->
     Terms;
 keep_only_allowed(Allowed, Terms) ->
     {As, NAs} = lists:partition(
-      fun(Term) ->
-        lists:member(element(1, Term), Allowed)
-      end,
-      Terms),
+		  fun(Term) ->
+			  lists:member(element(1, Term), Allowed)
+		  end,
+		  Terms),
     [?WARNING_MSG("This option is not allowed, "
-      "and will not be accepted:~n~p", [NA])
+		  "and will not be accepted:~n~p", [NA])
      || NA <- NAs],
     As.
 
@@ -399,14 +398,14 @@ replace_macros(Terms) ->
 split_terms_macros(Terms) ->
     lists:foldl(
       fun(Term, {TOs, Ms}) ->
-        case Term of
-      {define_macro, Key, Value} -> 
-          case is_correct_macro({Key, Value}) of
-        true -> 
-            {TOs, Ms++[{Key, Value}]};
-        false -> 
-            exit({macro_not_properly_defined, Term})
-          end;
+	      case Term of
+		  {define_macro, Key, Value} -> 
+		      case is_correct_macro({Key, Value}) of
+			  true -> 
+			      {TOs, Ms++[{Key, Value}]};
+			  false -> 
+			      exit({macro_not_properly_defined, Term})
+		      end;
                   {define_macro, KeyVals} ->
                       case lists:all(fun is_correct_macro/1, KeyVals) of
                           true ->
@@ -414,9 +413,9 @@ split_terms_macros(Terms) ->
                           false ->
                               exit({macros_not_properly_defined, Term})
                       end;
-      Term ->
-          {TOs ++ [Term], Ms}
-        end
+		  Term ->
+		      {TOs ++ [Term], Ms}
+	      end
       end,
       {[], []},
       Terms).
@@ -439,13 +438,13 @@ replace(Term, Macros) ->
 
 replace_term(Key, Macros) when is_atom(Key) ->
     case is_all_uppercase(Key) of
-  true ->
-      case proplists:get_value(Key, Macros) of
-    undefined -> exit({undefined_macro, Key});
-    Value -> Value
-      end;
-  false ->
-      Key
+	true ->
+	    case proplists:get_value(Key, Macros) of
+		undefined -> exit({undefined_macro, Key});
+		Value -> Value
+	    end;
+	false ->
+	    Key
     end;
 replace_term({use_macro, Key, Value}, Macros) ->
     proplists:get_value(Key, Macros, Value);
@@ -461,15 +460,15 @@ replace_term(Term, _) ->
 is_all_uppercase(Atom) ->
     String = erlang:atom_to_list(Atom),
     lists:all(fun(C) when C >= $a, C =< $z -> false;
-     (_) -> true
-        end, String).
+		 (_) -> true
+	      end, String).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Process terms
 
 process_term(Term, State) ->
     case Term of
-  {host_config, HostTerms} ->
+	{host_config, HostTerms} ->
             lists:foldl(
               fun({Host, Terms}, AccState) ->
                       lists:foldl(fun(T, S) ->
@@ -483,7 +482,7 @@ process_term(Term, State) ->
                                           process_host_term(T, Host, S, append)
                                   end, AccState, Terms)
               end, State, HostTerms);
-  _ ->
+	_ ->
             process_host_term(Term, global, State, set)
     end.
 
@@ -497,8 +496,8 @@ process_host_term(Term, Host, State, Action) ->
             State;
         {hosts, _} ->
             State;
-  {Opt, Val} when Action == set ->
-      set_option({Opt, Host}, Val, State);
+	{Opt, Val} when Action == set ->
+	    set_option({Opt, Host}, Val, State);
         {Opt, Val} when Action == append ->
             append_option({Opt, Host}, Val, State);
         Opt ->
@@ -528,23 +527,23 @@ append_option({Opt, Host}, Val, State) ->
 set_opts(State) ->
     Opts = State#state.opts,
     F = fun() ->
-    lists:foreach(fun(R) ->
-              mnesia:write(R)
-            end, Opts)
-  end,
+		lists:foreach(fun(R) ->
+				      mnesia:write(R)
+			      end, Opts)
+	end,
     case mnesia:transaction(F) of
-  {atomic, _} -> ok;
-  {aborted,{no_exists,Table}} ->
-      MnesiaDirectory = mnesia:system_info(directory),
-      ?ERROR_MSG("Error reading Mnesia database spool files:~n"
-           "The Mnesia database couldn't read the spool file for the table '~p'.~n"
-           "ejabberd needs read and write access in the directory:~n   ~s~n"
-           "Maybe the problem is a change in the computer hostname,~n"
-           "or a change in the Erlang node name, which is currently:~n   ~p~n"
-           "Check the ejabberd guide for details about changing the~n"
-           "computer hostname or Erlang node name.~n",
-           [Table, MnesiaDirectory, node()]),
-      exit("Error reading Mnesia database")
+	{atomic, _} -> ok;
+	{aborted,{no_exists,Table}} ->
+	    MnesiaDirectory = mnesia:system_info(directory),
+	    ?ERROR_MSG("Error reading Mnesia database spool files:~n"
+		       "The Mnesia database couldn't read the spool file for the table '~p'.~n"
+		       "ejabberd needs read and write access in the directory:~n   ~s~n"
+		       "Maybe the problem is a change in the computer hostname,~n"
+		       "or a change in the Erlang node name, which is currently:~n   ~p~n"
+		       "Check the ejabberd guide for details about changing the~n"
+		       "computer hostname or Erlang node name.~n",
+		       [Table, MnesiaDirectory, node()]),
+	    exit("Error reading Mnesia database")
     end.
 
 add_global_option(Opt, Val) ->
@@ -557,9 +556,9 @@ add_option(Opt, Val) when is_atom(Opt) ->
     add_option({Opt, global}, Val);
 add_option(Opt, Val) ->
     mnesia:transaction(fun() ->
-             mnesia:write(#local_config{key = Opt,
-                value = Val})
-           end).
+			       mnesia:write(#local_config{key = Opt,
+							  value = Val})
+		       end).
 
 -spec prepare_opt_val(any(), any(), check_fun(), any()) -> any().
 
@@ -588,9 +587,6 @@ prepare_opt_val(Opt, Val, F, Default) ->
 
 -spec get_global_option(any(), check_fun()) -> any().
 
-get_global_option(Opt) ->
-    get_option(Opt, fun(A) -> A end).
-
 get_global_option(Opt, F) ->
     get_option(Opt, F, undefined).
 
@@ -600,9 +596,6 @@ get_global_option(Opt, F, Default) ->
     get_option(Opt, F, Default).
 
 -spec get_local_option(any(), check_fun()) -> any().
-
-get_local_option(Opt) ->
-    get_option(Opt, fun(A) -> A end).
 
 get_local_option(Opt, F) ->
     get_option(Opt, F, undefined).
@@ -629,15 +622,15 @@ get_option(Opt, F, Default) ->
                           "This is likely a bug", [Opt])
     end,
     case ets:lookup(local_config, Opt) of
-      [#local_config{value = Val}] ->
-        prepare_opt_val(Opt, Val, F, Default);
-      _ ->
-        case Opt of
-            {Key, Host} when Host /= global ->
-                get_option({Key, global}, F, Default);
-            _ ->
-                Default
-        end
+	[#local_config{value = Val}] ->
+	    prepare_opt_val(Opt, Val, F, Default);
+        _ ->
+            case Opt of
+                {Key, Host} when Host /= global ->
+                    get_option({Key, global}, F, Default);
+                _ ->
+                    Default
+            end
     end.
 
 -spec get_vh_by_auth_method(atom()) -> [binary()].
@@ -645,20 +638,20 @@ get_option(Opt, F, Default) ->
 %% Return the list of hosts handled by a given module
 get_vh_by_auth_method(AuthMethod) ->
     mnesia:dirty_select(local_config,
-      [{#local_config{key = {auth_method, '$1'},
-          value=AuthMethod},[],['$1']}]).
+			[{#local_config{key = {auth_method, '$1'},
+					value=AuthMethod},[],['$1']}]).
 
 %% @spec (Path::string()) -> true | false
 is_file_readable(Path) ->
     case file:read_file_info(Path) of
-  {ok, FileInfo} ->
-      case {FileInfo#file_info.type, FileInfo#file_info.access} of
-    {regular, read} -> true;
-    {regular, read_write} -> true;
-    _ -> false
-      end;
-  {error, _Reason} ->
-      false
+	{ok, FileInfo} ->
+	    case {FileInfo#file_info.type, FileInfo#file_info.access} of
+		{regular, read} -> true;
+		{regular, read_write} -> true;
+		_ -> false
+	    end;
+	{error, _Reason} ->
+	    false
     end.
 
 get_version() ->
@@ -715,7 +708,7 @@ strings_to_binary(L) when is_list(L) ->
             strings_to_binary1(L)
     end;
 strings_to_binary({A, B, C, D}) when
-  is_integer(A), is_integer(B), is_integer(C), is_integer(D) ->
+	is_integer(A), is_integer(B), is_integer(C), is_integer(D) ->
     {A, B, C ,D};
 strings_to_binary(T) when is_tuple(T) ->
     list_to_tuple(strings_to_binary1(tuple_to_list(T)));
@@ -760,10 +753,12 @@ format_term(T) ->
 transform_terms(Terms) ->
     %% We could check all ejabberd beams, but this
     %% slows down start-up procedure :(
-    Mods = [
+    Mods = [mod_register,
             ejabberd_listener,
+            ejabberd_odbc_sup,
             shaper,
-            acl],
+            acl,
+            ejabberd_config],
     collect_options(transform_terms(Mods, Terms)).
 
 transform_terms([Mod|Mods], Terms) ->

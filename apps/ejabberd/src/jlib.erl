@@ -378,21 +378,21 @@ get_iq_namespace(#xmlel{name = <<"iq">>, children = Els}) ->
 get_iq_namespace(_) -> <<"">>.
 
 %%
-% -spec(iq_query_info/1 ::
-% (
-%   Xmlel :: xmlel())
-%     -> iq_request() | 'reply' | 'invalid' | 'not_iq'
-% ).
+-spec(iq_query_info/1 ::
+(
+  Xmlel :: xmlel())
+    -> iq_request() | 'reply' | 'invalid' | 'not_iq'
+).
 
 %% @spec (xmlelement()) -> iq() | reply | invalid | not_iq
 iq_query_info(El) -> iq_info_internal(El, request).
 
 %%
-% -spec(iq_query_or_response_info/1 ::
-% (
-%   Xmlel :: xmlel())
-%     -> iq_request() | iq_reply() | 'reply' | 'invalid' | 'not_iq'
-% ).
+-spec(iq_query_or_response_info/1 ::
+(
+  Xmlel :: xmlel())
+    -> iq_request() | iq_reply() | 'reply' | 'invalid' | 'not_iq'
+).
 
 iq_query_or_response_info(El) ->
     iq_info_internal(El, any).
@@ -514,7 +514,7 @@ parse_xdata_values([#xmlel{name = <<"value">>, children = SubEls} | Els], Res) -
 parse_xdata_values([_ | Els], Res) ->
     parse_xdata_values(Els, Res).
 
-% -spec rsm_decode(iq() | xmlel()) -> none | rsm_in().
+-spec rsm_decode(iq() | xmlel()) -> none | rsm_in().
 
 rsm_decode(#iq{sub_el = SubEl}) -> rsm_decode(SubEl);
 rsm_decode(#xmlel{} = SubEl) ->
@@ -551,7 +551,7 @@ rsm_parse_element(#xmlel{name = <<"index">>,
     RsmIn#rsm_in{index = Index};
 rsm_parse_element(_, RsmIn) -> RsmIn.
 
-% -spec rsm_encode(iq(), rsm_out()) -> iq().
+-spec rsm_encode(iq(), rsm_out()) -> iq().
 
 rsm_encode(#iq{sub_el = SubEl} = IQ, RsmOut) ->
     Set = #xmlel{name = <<"set">>,
@@ -563,7 +563,7 @@ rsm_encode(#iq{sub_el = SubEl} = IQ, RsmOut) ->
 		 children = [Set | SubEls]},
     IQ#iq{sub_el = New}.
 
-% -spec rsm_encode(none | rsm_out()) -> [xmlel()].
+-spec rsm_encode(none | rsm_out()) -> [xmlel()].
 
 rsm_encode(none) -> [];
 rsm_encode(RsmOut) ->

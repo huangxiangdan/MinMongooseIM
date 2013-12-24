@@ -5,7 +5,7 @@
 %%% Created : 16 Nov 2002 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2011   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2013   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -25,7 +25,9 @@
 %%%----------------------------------------------------------------------
 
 -module(ejabberd_c2s).
+
 -author('alexey@process-one.net').
+
 -update_info({update, 0}).
 
 -define(GEN_FSM, p1_fsm).
@@ -62,10 +64,15 @@
 	 code_change/4,
 	 handle_info/3,
 	 terminate/3,
-	 print_state/1]).
+	 print_state/1
+     ]).
 
 -include("ejabberd.hrl").
+-include("logger.hrl").
+
 -include("jlib.hrl").
+
+-include("mod_privacy.hrl").
 
 -define(SETS, gb_sets).
 -define(DICT, dict).
@@ -96,7 +103,7 @@
 		pres_last, pres_pri,
 		pres_timestamp,
 		pres_invis = false,
-		privacy_list = {},
+		privacy_list = #userlist{},
 		conn = unknown,
 		auth_module = unknown,
 		ip,
@@ -153,13 +160,9 @@
 %%% API
 %%%----------------------------------------------------------------------
 start(SockData, Opts) ->
-    ?INFO_MSG("ejabberd_c2s start SockData (~p)",
-            [SockData]),
     ?SUPERVISOR_START.
 
 start_link(SockData, Opts) ->
-    ?INFO_MSG("ejabberd_c2s start_link SockData (~p)",
-            [SockData]),
     ?GEN_FSM:start_link(ejabberd_c2s, [SockData, Opts],
 			fsm_limit_opts(Opts) ++ ?FSMOPTS).
 
@@ -218,8 +221,6 @@ stop(FsmRef) -> (?GEN_FSM):send_event(FsmRef, closed).
 %%          {stop, StopReason}
 %%----------------------------------------------------------------------
 init([{SockMod, Socket}, Opts]) ->
-    ?INFO_MSG("ejabberd_c2s init ",
-            []),
     Access = case lists:keysearch(access, 1, Opts) of
 	       {value, {_, A}} -> A;
 	       _ -> all
@@ -252,27 +253,25 @@ init([{SockMod, Socket}, Opts]) ->
     %% Check if IP is blacklisted:
     case is_ip_blacklisted(IP) of
       true ->
-    	  ?INFO_MSG("Connection attempt from blacklisted "
-    		    "IP: ~s (~w)",
-    		    [jlib:ip_to_list(IP), IP]),
-    	  {stop, normal};
+	  ?INFO_MSG("Connection attempt from blacklisted "
+		    "IP: ~s (~w)",
+		    [jlib:ip_to_list(IP), IP]),
+	  {stop, normal};
       false ->
-        ?INFO_MSG("Connection is not in blacklist",
-            []),
-    	  Socket1 = if TLSEnabled andalso
-    			 SockMod /= ejabberd_frontend_socket ->
-    			   SockMod:starttls(Socket, TLSOpts);
-    		       true -> Socket
-    		    end,
-    	  SocketMonitor = SockMod:monitor(Socket1),
-    	  StateData = #state{socket = Socket1, sockmod = SockMod,
-    			     socket_monitor = SocketMonitor,
-    			     xml_socket = XMLSocket, zlib = Zlib, tls = TLS,
-    			     tls_required = StartTLSRequired,
-    			     tls_enabled = TLSEnabled, tls_options = TLSOpts,
-    			     streamid = new_id(), access = Access,
-    			     shaper = Shaper, ip = IP},
-    	  {ok, wait_for_stream, StateData, ?C2S_OPEN_TIMEOUT}
+	  Socket1 = if TLSEnabled andalso
+			 SockMod /= ejabberd_frontend_socket ->
+			   SockMod:starttls(Socket, TLSOpts);
+		       true -> Socket
+		    end,
+	  SocketMonitor = SockMod:monitor(Socket1),
+	  StateData = #state{socket = Socket1, sockmod = SockMod,
+			     socket_monitor = SocketMonitor,
+			     xml_socket = XMLSocket, zlib = Zlib, tls = TLS,
+			     tls_required = StartTLSRequired,
+			     tls_enabled = TLSEnabled, tls_options = TLSOpts,
+			     streamid = new_id(), access = Access,
+			     shaper = Shaper, ip = IP},
+	  {ok, wait_for_stream, StateData, ?C2S_OPEN_TIMEOUT}
     end.
 
 %% Return list of all available resources of contacts,
@@ -526,7 +525,7 @@ wait_for_auth({xmlstreamelement, El}, StateData) ->
 	      of
 	    true ->
 		DGen = fun (PW) ->
-			       sha:sha(<<(StateData#state.streamid)/binary, PW/binary>>)
+			       p1_sha:sha(<<(StateData#state.streamid)/binary, PW/binary>>)
 		       end,
 		case ejabberd_auth:check_password_with_authmodule(U,
 								  StateData#state.server,
@@ -558,7 +557,7 @@ wait_for_auth({xmlstreamelement, El}, StateData) ->
 			Ts1 = [LJID | Ts],
 			PrivList = ejabberd_hooks:run_fold(privacy_get_user_list,
 						    StateData#state.server,
-						    {},
+						    #userlist{},
 						    [U, StateData#state.server]),
 			NewStateData = StateData#state{user = U,
 							resource = R,
@@ -627,8 +626,6 @@ wait_for_feature_request({xmlstreamelement, El},
 	  when not ((SockMod == gen_tcp) and TLSRequired) ->
 	  Mech = xml:get_attr_s(<<"mechanism">>, Attrs),
 	  ClientIn = jlib:decode_base64(xml:get_cdata(Els)),
-    ?INFO_MSG("Attrs is ~p, ClientIn is ~p, Els is ~p",
-        [Attrs, ClientIn, Els]),
 	  case cyrsasl:server_start(StateData#state.sasl_state,
 				    Mech, ClientIn)
 	      of
@@ -785,8 +782,6 @@ wait_for_sasl_response({xmlstreamelement, El},
     case {xml:get_attr_s(<<"xmlns">>, Attrs), Name} of
       {?NS_SASL, <<"response">>} ->
 	  ClientIn = jlib:decode_base64(xml:get_cdata(Els)),
-    ?INFO_MSG("ClientIn is ~p, ~p",
-        [ClientIn, Els]),
 	  case cyrsasl:server_step(StateData#state.sasl_state,
 				   ClientIn)
 	      of
@@ -840,7 +835,6 @@ wait_for_sasl_response({xmlstreamelement, El},
 			       StateData#state{sasl_state = NewSASLState});
 	    {error, Error, Username} ->
 		IP = peerip(StateData#state.sockmod, StateData#state.socket),
-		?INFO_MSG("Failed error is ~p", [Error]),
 		?INFO_MSG("(~w) Failed authentication for ~s@~s from IP ~s",
 		       [StateData#state.socket,
 			Username, StateData#state.server, jlib:ip_to_list(IP)]),
@@ -997,7 +991,7 @@ wait_for_session({xmlstreamelement, El}, StateData) ->
 		    PrivList =
 			ejabberd_hooks:run_fold(
 			  privacy_get_user_list, StateData#state.server,
-			  {},
+			  #userlist{},
 			  [U, StateData#state.server]),
 		    SID = {now(), self()},
 		    Conn = get_conn_type(StateData),
@@ -1654,7 +1648,6 @@ terminate(_Reason, StateName, StateData) ->
 change_shaper(StateData, JID) ->
     Shaper = acl:match_rule(StateData#state.server,
 			    StateData#state.shaper, JID),
-    ?INFO_MSG("change_shaper Shaper is (~p), StateData is (~p)", [Shaper, StateData]),
     (StateData#state.sockmod):change_shaper(StateData#state.socket,
 					    Shaper).
 

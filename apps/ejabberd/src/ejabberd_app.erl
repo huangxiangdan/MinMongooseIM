@@ -224,9 +224,9 @@ set_loglevel_from_config() ->
 start_apps() ->
     ejabberd:start_app(sasl),
     ejabberd:start_app(ssl),
-    % ejabberd:start_app(p1_yaml),
+    ejabberd:start_app(p1_yaml),
     ejabberd:start_app(p1_tls),
     ejabberd:start_app(p1_xml),
-    ejabberd:start_app(p1_stringprep).
-    % ejabberd:start_app(p1_zlib),
-    % ejabberd:start_app(p1_cache_tab).
+    ejabberd:start_app(p1_stringprep),
+    ejabberd:start_app(p1_zlib),
+    ejabberd:start_app(p1_cache_tab).

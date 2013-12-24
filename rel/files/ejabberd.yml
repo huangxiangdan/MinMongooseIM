@@ -1,0 +1,39 @@
+loglevel: 4
+hosts:
+  - "localhost"
+  - "tsung-server"
+listen:
+  -
+    port: 5222
+    module: ejabberd_c2s
+    max_stanza_size: 65536
+    backlog: 512
+    shaper: c2s_shaper
+    access: c2s
+auth_method: anonymous
+anonymous_protocol: both
+shaper:
+  normal: 1000
+  fast: 50000
+max_fsm_queue: 1000000
+acl:
+  local:
+    user_regexp: ""
+  loopback:
+    ip:
+      - "127.0.0.0/8"
+access:
+  max_user_sessions:
+    all: 10
+  max_user_offline_messages:
+    admin: 5000
+    all: 100
+  local:
+    local: allow
+  c2s:
+    blocked: deny
+    all: allow
+  c2s_shaper:
+    admin: none
+    all: normal
+language: "en"
