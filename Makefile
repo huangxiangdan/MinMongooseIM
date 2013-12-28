@@ -32,6 +32,7 @@ eunit: rebar
 	./rebar skip_deps=true eunit
 
 rel: rebar deps
+	cd ./deps/p1_xml; ./configure; cd ../../
 	./rebar compile generate -f
 
 devrel: $(DEVNODES)
