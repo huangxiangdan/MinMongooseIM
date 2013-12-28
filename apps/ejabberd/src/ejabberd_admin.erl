@@ -483,9 +483,14 @@ keep_modules_tables() ->
 module_tables(mod_announce) -> [motd, motd_users];
 module_tables(mod_irc) -> [irc_custom];
 module_tables(mod_last) -> [last_activity];
+module_tables(mod_muc) -> [muc_room, muc_registered];
 module_tables(mod_offline) -> [offline_msg];
 module_tables(mod_privacy) -> [privacy];
 module_tables(mod_private) -> [private_storage];
+module_tables(mod_pubsub) -> [pubsub_node];
+module_tables(mod_roster) -> [roster];
+module_tables(mod_shared_roster) -> [sr_group, sr_user];
+module_tables(mod_vcard) -> [vcard, vcard_search];
 module_tables(_Other) -> [].
 
 get_local_tables() ->

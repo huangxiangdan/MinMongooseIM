@@ -674,9 +674,15 @@ replace_module(mod_announce_odbc) -> {mod_announce, odbc};
 replace_module(mod_blocking_odbc) -> {mod_blocking, odbc};
 replace_module(mod_caps_odbc) -> {mod_caps, odbc};
 replace_module(mod_irc_odbc) -> {mod_irc, odbc};
+replace_module(mod_last_odbc) -> {mod_last, odbc};
+replace_module(mod_muc_odbc) -> {mod_muc, odbc};
 replace_module(mod_offline_odbc) -> {mod_offline, odbc};
 replace_module(mod_privacy_odbc) -> {mod_privacy, odbc};
 replace_module(mod_private_odbc) -> {mod_private, odbc};
+replace_module(mod_roster_odbc) -> {mod_roster, odbc};
+replace_module(mod_shared_roster_odbc) -> {mod_shared_roster, odbc};
+replace_module(mod_vcard_odbc) -> {mod_vcard, odbc};
+replace_module(mod_vcard_xupdate_odbc) -> {mod_vcard_xupdate, odbc};
 replace_module(Module) -> Module.
 
 replace_modules(Modules) ->
@@ -754,9 +760,12 @@ transform_terms(Terms) ->
     %% We could check all ejabberd beams, but this
     %% slows down start-up procedure :(
     Mods = [mod_register,
+            mod_last,
+            ejabberd_s2s,
             ejabberd_listener,
             ejabberd_odbc_sup,
             shaper,
+            ejabberd_s2s_out,
             acl,
             ejabberd_config],
     collect_options(transform_terms(Mods, Terms)).

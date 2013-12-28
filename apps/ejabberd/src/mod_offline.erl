@@ -156,8 +156,8 @@ store_offline_msg(Host, {User, _Server}, Msgs, Len, MaxOfflineMsgs, odbc) ->
 					    children = Els} =
 					 M#offline_msg.packet,
 				     Attrs2 =
-					 jlib:replace_from_to_attrs(jlib:jid_to_binary(From),
-								    jlib:jid_to_binary(To),
+					 jlib:replace_from_to_attrs(jlib:jid_to_string(From),
+								    jlib:jid_to_string(To),
 								    Attrs),
 				     Packet = #xmlel{name = Name,
 						     attrs = Attrs2,
@@ -573,8 +573,8 @@ offline_msg_to_route(LServer, #offline_msg{} = R) ->
                      calendar:now_to_universal_time(
                        R#offline_msg.timestamp))]}};
 offline_msg_to_route(_LServer, #xmlel{} = El) ->
-    To = jlib:binary_to_jid(xml:get_tag_attr_s(<<"to">>, El)),
-    From = jlib:binary_to_jid(xml:get_tag_attr_s(<<"from">>, El)),
+    To = jlib:string_to_jid(xml:get_tag_attr_s(<<"to">>, El)),
+    From = jlib:string_to_jid(xml:get_tag_attr_s(<<"from">>, El)),
     if (To /= error) and (From /= error) ->
             {route, From, To, El};
        true ->
@@ -617,8 +617,8 @@ format_user_queue(Msgs, mnesia) ->
 							 [Year, Month, Day,
 							  Hour, Minute,
 							  Second])),
-		      SFrom = jlib:jid_to_binary(From),
-		      STo = jlib:jid_to_binary(To),
+		      SFrom = jlib:jid_to_string(From),
+		      STo = jlib:jid_to_string(To),
 		      Attrs2 = jlib:replace_from_to_attrs(SFrom, STo, Attrs),
 		      Packet = #xmlel{name = Name, attrs = Attrs2,
 				      children = Els},
@@ -759,7 +759,7 @@ user_queue_parse_query(LUser, LServer, Query, odbc) ->
     end.
 
 us_to_list({User, Server}) ->
-    jlib:jid_to_binary({User, Server, <<"">>}).
+    jlib:jid_to_string({User, Server, <<"">>}).
 
 get_queue_length(LUser, LServer) ->
     get_queue_length(LUser, LServer,
@@ -887,8 +887,8 @@ export(_Server) ->
               #xmlel{name = Name, attrs = Attrs, children = Els} =
                   Packet,
               Attrs2 =
-                  jlib:replace_from_to_attrs(jlib:jid_to_binary(From),
-                                             jlib:jid_to_binary(To),
+                  jlib:replace_from_to_attrs(jlib:jid_to_string(From),
+                                             jlib:jid_to_string(To),
                                              Attrs),
               NewPacket = #xmlel{name = Name, attrs = Attrs2,
                                  children =
@@ -915,9 +915,9 @@ import(LServer) ->
     [{<<"select username, xml from spool;">>,
       fun([LUser, XML]) ->
               El = #xmlel{} = xml_stream:parse_element(XML),
-              From = #jid{} = jlib:binary_to_jid(
+              From = #jid{} = jlib:string_to_jid(
                                 xml:get_attr_s(<<"from">>, El#xmlel.attrs)),
-              To = #jid{} = jlib:binary_to_jid(
+              To = #jid{} = jlib:string_to_jid(
                               xml:get_attr_s(<<"to">>, El#xmlel.attrs)),
               Stamp = xml:get_path_s(El, [{elem, <<"delay">>},
                                           {attr, <<"stamp">>}]),

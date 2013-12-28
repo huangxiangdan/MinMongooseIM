@@ -204,7 +204,7 @@ get_admin_jids() ->
       watchdog_admins,
       fun(JIDs) ->
               [jlib:jid_tolower(
-                 jlib:binary_to_jid(
+                 jlib:string_to_jid(
                    iolist_to_binary(S))) || S <- JIDs]
       end, []).
 

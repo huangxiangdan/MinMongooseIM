@@ -395,7 +395,7 @@ entropy(B) ->
 				       C >= $A, C =< $Z ->
 					   [Digit, Printable, LowLetter, 26,
 					    Other];
-				       C >= 16#21, C =< 16#7e ->
+				       C >= 33, C =< 126 ->
 					   [Digit, 33, LowLetter, HiLetter,
 					    Other];
 				       true ->

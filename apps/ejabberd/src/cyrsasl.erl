@@ -103,7 +103,7 @@ register_mechanism(Mechanism, Module, PasswordType) ->
 %%-include("jlib.hrl").
 %%check_authzid(_State, Props) ->
 %%    AuthzId = xml:get_attr_s(authzid, Props),
-%%    case jlib:binary_to_jid(AuthzId) of
+%%    case jlib:string_to_jid(AuthzId) of
 %%	error ->
 %%	    {error, "invalid-authzid"};
 %%	JID ->

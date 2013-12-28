@@ -312,6 +312,12 @@ match_acl(ACL, JID, Host) ->
                           lists:member(Server, ?MYHOSTS);
                   {server, S} -> S == Server;
                   {resource, R} -> R == Resource;
+                  {shared_group, {G, H}} ->
+                      Mod = loaded_shared_roster_module(H),
+                      Mod:is_user_in_group({User, Server}, G, H);
+                  {shared_group, G} ->
+                      Mod = loaded_shared_roster_module(Host),
+                      Mod:is_user_in_group({User, Server}, G, Host);
                   {user_regexp, {UR, S}} ->
                       S == Server andalso is_regexp_match(User, UR);
                   {user_regexp, UR} ->
@@ -386,6 +392,12 @@ ip_to_integer({IP1, IP2, IP3, IP4, IP5, IP6, IP7,
       bor IP7
       bsl 16
       bor IP8.
+
+loaded_shared_roster_module(Host) ->
+    case gen_mod:is_loaded(Host, mod_shared_roster_ldap) of
+      true -> mod_shared_roster_ldap;
+      false -> mod_shared_roster
+    end.
 
 parse_ip_netmask(S) ->
     case str:tokens(S, <<"/">>) of

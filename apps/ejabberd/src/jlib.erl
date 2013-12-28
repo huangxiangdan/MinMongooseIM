@@ -36,8 +36,8 @@
 	 make_error_reply/2, make_error_element/2,
 	 make_correct_from_to_attrs/3, replace_from_to_attrs/3,
 	 replace_from_to/3, replace_from_attrs/2, replace_from/2,
-	 remove_attr/2, make_jid/3, make_jid/1, binary_to_jid/1,
-	 jid_to_binary/1, is_nodename/1, tolower/1, nodeprep/1,
+	 remove_attr/2, make_jid/3, make_jid/1, string_to_jid/1,
+	 jid_to_string/1, is_nodename/1, tolower/1, nodeprep/1,
 	 nameprep/1, resourceprep/1, jid_tolower/1,
 	 jid_remove_resource/1, jid_replace_resource/2,
 	 get_iq_namespace/1, iq_query_info/1,
@@ -162,8 +162,8 @@ replace_from_to_attrs(From, To, Attrs) ->
 replace_from_to(From, To,
 		#xmlel{name = Name, attrs = Attrs, children = Els}) ->
     NewAttrs =
-	replace_from_to_attrs(jlib:jid_to_binary(From),
-			      jlib:jid_to_binary(To), Attrs),
+	replace_from_to_attrs(jlib:jid_to_string(From),
+			      jlib:jid_to_string(To), Attrs),
     #xmlel{name = Name, attrs = NewAttrs, children = Els}.
 
 -spec replace_from_attrs(binary(), [attr()]) -> [attr()].
@@ -176,7 +176,7 @@ replace_from_attrs(From, Attrs) ->
 
 replace_from(From,
 	     #xmlel{name = Name, attrs = Attrs, children = Els}) ->
-    NewAttrs = replace_from_attrs(jlib:jid_to_binary(From),
+    NewAttrs = replace_from_attrs(jlib:jid_to_string(From),
 				  Attrs),
     #xmlel{name = Name, attrs = NewAttrs, children = Els}.
 
@@ -211,46 +211,46 @@ make_jid(User, Server, Resource) ->
 make_jid({User, Server, Resource}) ->
     make_jid(User, Server, Resource).
 
--spec binary_to_jid(binary()) -> jid() | error.
+-spec string_to_jid(binary()) -> jid() | error.
 
-binary_to_jid(S) ->
-    binary_to_jid1(binary_to_list(S), "").
+string_to_jid(S) ->
+    string_to_jid1(binary_to_list(S), "").
 
-binary_to_jid1([$@ | _J], "") -> error;
-binary_to_jid1([$@ | J], N) ->
-    binary_to_jid2(J, lists:reverse(N), "");
-binary_to_jid1([$/ | _J], "") -> error;
-binary_to_jid1([$/ | J], N) ->
-    binary_to_jid3(J, "", lists:reverse(N), "");
-binary_to_jid1([C | J], N) ->
-    binary_to_jid1(J, [C | N]);
-binary_to_jid1([], "") -> error;
-binary_to_jid1([], N) ->
+string_to_jid1([$@ | _J], "") -> error;
+string_to_jid1([$@ | J], N) ->
+    string_to_jid2(J, lists:reverse(N), "");
+string_to_jid1([$/ | _J], "") -> error;
+string_to_jid1([$/ | J], N) ->
+    string_to_jid3(J, "", lists:reverse(N), "");
+string_to_jid1([C | J], N) ->
+    string_to_jid1(J, [C | N]);
+string_to_jid1([], "") -> error;
+string_to_jid1([], N) ->
     make_jid(<<"">>, list_to_binary(lists:reverse(N)), <<"">>).
 
 %% Only one "@" is admitted per JID
-binary_to_jid2([$@ | _J], _N, _S) -> error;
-binary_to_jid2([$/ | _J], _N, "") -> error;
-binary_to_jid2([$/ | J], N, S) ->
-    binary_to_jid3(J, N, lists:reverse(S), "");
-binary_to_jid2([C | J], N, S) ->
-    binary_to_jid2(J, N, [C | S]);
-binary_to_jid2([], _N, "") -> error;
-binary_to_jid2([], N, S) ->
+string_to_jid2([$@ | _J], _N, _S) -> error;
+string_to_jid2([$/ | _J], _N, "") -> error;
+string_to_jid2([$/ | J], N, S) ->
+    string_to_jid3(J, N, lists:reverse(S), "");
+string_to_jid2([C | J], N, S) ->
+    string_to_jid2(J, N, [C | S]);
+string_to_jid2([], _N, "") -> error;
+string_to_jid2([], N, S) ->
     make_jid(list_to_binary(N), list_to_binary(lists:reverse(S)), <<"">>).
 
-binary_to_jid3([C | J], N, S, R) ->
-    binary_to_jid3(J, N, S, [C | R]);
-binary_to_jid3([], N, S, R) ->
+string_to_jid3([C | J], N, S, R) ->
+    string_to_jid3(J, N, S, [C | R]);
+string_to_jid3([], N, S, R) ->
     make_jid(list_to_binary(N), list_to_binary(S),
              list_to_binary(lists:reverse(R))).
 
--spec jid_to_binary(jid() | ljid()) -> binary().
+-spec jid_to_string(jid() | ljid()) -> binary().
 
-jid_to_binary(#jid{user = User, server = Server,
+jid_to_string(#jid{user = User, server = Server,
 		   resource = Resource}) ->
-    jid_to_binary({User, Server, Resource});
-jid_to_binary({N, S, R}) ->
+    jid_to_string({User, Server, Resource});
+jid_to_string({N, S, R}) ->
     Node = iolist_to_binary(N),
     Server = iolist_to_binary(S),
     Resource = iolist_to_binary(R),
@@ -640,7 +640,7 @@ timestamp_to_xml(DateTime, Timezone, FromJID, Desc) ->
     {T_string, Tz_string} = timestamp_to_iso(DateTime,
 					     Timezone),
     Text = [{xmlcdata, Desc}],
-    From = jlib:jid_to_binary(FromJID),
+    From = jlib:jid_to_string(FromJID),
 %% TODO: Remove this function once XEP-0091 is Obsolete
     #xmlel{name = <<"delay">>,
 	   attrs =

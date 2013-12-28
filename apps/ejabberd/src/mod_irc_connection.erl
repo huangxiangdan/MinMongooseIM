@@ -771,9 +771,9 @@ bounce_messages(Reason) ->
 	    <<"error">> -> ok;
 	    _ ->
 		Err = jlib:make_error_reply(El, <<"502">>, Reason),
-		From = jlib:binary_to_jid(xml:get_attr_s(<<"from">>,
+		From = jlib:string_to_jid(xml:get_attr_s(<<"from">>,
 							 Attrs)),
-		To = jlib:binary_to_jid(xml:get_attr_s(<<"to">>,
+		To = jlib:string_to_jid(xml:get_attr_s(<<"to">>,
 						       Attrs)),
 		ejabberd_router:route(To, From, Err)
 	  end,
@@ -1142,7 +1142,7 @@ process_userinfo(StateData, _Nick, From) ->
     send_text(StateData,
 	      io_lib:format("NOTICE ~s :\001USERINFO xmpp:~s\001\r\n",
 			    [FromUser,
-			     jlib:jid_to_binary(StateData#state.user)])).
+			     jlib:jid_to_string(StateData#state.user)])).
 
 process_topic(StateData, Chan, From, String) ->
     [FromUser | _] = str:tokens(From, <<"!">>),
