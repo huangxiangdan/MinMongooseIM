@@ -157,10 +157,9 @@ cleanup(#state{vhost=VHost} = _State) ->
 check_and_forward(_From, _To, #xmlel{name = <<"message">>, attrs = Attrs} = Packet, Direction, APIKey, Address)->
     ?INFO_MSG("sss", []),
     Log = xml:get_path_s(Packet, [{elem, <<"html">>}, {elem, <<"body">>}, {elem, <<"extra">>}, {elem, <<"log">>}, cdata]),
-    case Log of
-    <<"false">> ->
-      ok;
-    _ -> 
+    if 
+    (Log == <<"false">>) and (Direction == sent) -> ok;
+    true -> 
       Type = xml:get_attr_s(<<"type">>, Attrs),
       FromID = element(2, _From),
       FromServer = element(3, _From),
