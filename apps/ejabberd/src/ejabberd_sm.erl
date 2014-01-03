@@ -110,7 +110,7 @@ route(From, To, Packet) ->
 -spec open_session(sid(), binary(), binary(), binary(), info()) -> ok.
 
 open_session(SID, User, Server, Resource, Info) ->
-    set_session(SID, User, Server, Resource, undefined, Info),
+    set_session(SID, User, Server, Resource, 0, Info),
     check_for_sessions_to_replace(User, Server, Resource),
     JID = jlib:make_jid(User, Server, Resource),
     ejabberd_hooks:run(sm_register_connection_hook,
@@ -196,7 +196,8 @@ get_user_info(User, Server, Resource) ->
 
 set_presence(SID, User, Server, Resource, Priority,
 	     Presence, Info) ->
-    set_session(SID, User, Server, Resource, Priority,
+    NewP = case Priority of undefined -> 0; _ -> Priority end,
+    set_session(SID, User, Server, Resource, NewP,
 		Info),
     ejabberd_hooks:run(set_presence_hook,
 		       jlib:nameprep(Server),
