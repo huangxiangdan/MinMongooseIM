@@ -1492,7 +1492,14 @@ handle_info({route, From, To,
 								 Packet, in)
 					   of
 					 allow -> {true, Attrs, StateData};
-					 deny -> {false, Attrs, StateData}
+					 deny -> 
+					 		Lang2 = StateData#state.lang,
+							ErrText = <<"You has denied "
+							   "the routing of this stanza.">>,
+							Err = jlib:make_error_reply(Packet,
+								?ERRT_NOT_ACCEPTABLE(Lang2, ErrText)),
+							ejabberd_router:route(To, From, Err),
+					 		{false, Attrs, StateData}
 				       end;
 				   _ -> {true, Attrs, StateData}
 				 end,
@@ -1919,7 +1926,7 @@ check_privacy_route(From, StateData, FromRoute, To,
 		      "the routing of this stanza.">>,
 	  Err = jlib:make_error_reply(Packet,
 				      ?ERRT_NOT_ACCEPTABLE(Lang, ErrText)),
-	  ejabberd_router:route(To, From, Err),
+	  ejabberd_router:route(From, From, Err),
 	  ok;
       allow -> ejabberd_router:route(FromRoute, To, Packet)
     end.

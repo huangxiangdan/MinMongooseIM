@@ -397,6 +397,51 @@ set_session(SID, User, Server, Resource, Priority, Info) ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+do_route(From, To, {broadcast, _} = Packet) ->
+    #jid{ luser = LUser, lserver = LServer, lresource = LResource} = To,
+    case To#jid.lresource of
+        <<"">> ->
+            lists:foreach(fun(R) ->
+                                  do_route(From,
+                                           jlib:jid_replace_resource(To, R),
+                                           Packet)
+                          end,
+                          get_user_resources(To#jid.user, To#jid.server));
+        _ ->
+            USR = jlib:jid_tolower(To),
+            case ?SM_BACKEND:get_sessions(LUser, LServer, LResource) of
+                [] ->
+                    ?DEBUG("packet dropped~n", []);
+                Ss ->
+                    Session = lists:max(Ss),
+                    Pid = element(2, Session#session.sid),
+                    ?DEBUG("sending to process ~p~n", [Pid]),
+                    Pid ! {route, From, To, Packet}
+            end
+    end;
+
+do_route(From, To, Packet) ->
+    ?DEBUG("session manager~n\tfrom ~p~n\tto ~p~n\tpacket ~P~n",
+           [From, To, Packet, 8]),
+    #jid{ luser = LUser, lserver = LServer, lresource = LResource} = To,
+    #xmlel{name = Name, attrs = Attrs} = Packet,
+    case LResource of
+        <<>> ->
+            do_route_no_resource(Name, xml:get_attr_s(<<"type">>, Attrs),
+                                 From, To, Packet);
+        _ ->
+            case ?SM_BACKEND:get_sessions(LUser, LServer, LResource) of
+                [] ->
+                    do_route_offline(Name, xml:get_attr_s(<<"type">>, Attrs),
+                                     From, To, Packet);
+                Ss ->
+                    Session = lists:max(Ss),
+                    Pid = element(2, Session#session.sid),
+                    ?DEBUG("sending to process ~p~n", [Pid]),
+                    Pid ! {route, From, To, Packet}
+        end
+    end.
+
 do_route(From, To, Packet) ->
     ?DEBUG("session manager~n\tfrom ~p~n\tto ~p~n\tpacket ~P~n",
            [From, To, Packet, 8]),
