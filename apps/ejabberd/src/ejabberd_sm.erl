@@ -569,6 +569,12 @@ route_message(From, To, Packet) ->
                                                        LServer,
                                                        [From, To, Packet]);
                                 false ->
+                                    DefaultLang = ?MYLANG,
+                                    ErrText = <<"Your message has been denied "
+                                       "to route.">>,
+                                    Err = jlib:make_error_reply(Packet,
+                                        ?ERRT_NOT_ACCEPTABLE(DefaultLang, ErrText)),
+                                    ejabberd_router:route_error(To, From, Err, Packet),
                                     ok
                             end;
                         _ ->

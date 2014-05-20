@@ -1498,7 +1498,7 @@ handle_info({route, From, To,
 							   "to route.">>,
 							Err = jlib:make_error_reply(Packet,
 								?ERRT_NOT_ACCEPTABLE(Lang2, ErrText)),
-              ejabberd_router:route(To, From, Err),
+              ejabberd_router:route_error(To, From, Err, Packet),
 					 		{false, Attrs, StateData}
 				       end;
 				   _ -> {true, Attrs, StateData}
