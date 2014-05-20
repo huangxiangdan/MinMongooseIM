@@ -1921,7 +1921,6 @@ check_privacy_route(From, StateData, FromRoute, To,
 			      out)
 	of
       deny ->
-    #xmlel{name = Name, attrs = Attrs, children = Els} = Packet},
 	  Lang = StateData#state.lang,
 	  ErrText = <<"Your active privacy list has denied "
 		      "the routing of this stanza.">>,
