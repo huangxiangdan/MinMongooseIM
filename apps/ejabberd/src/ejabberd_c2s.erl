@@ -1494,11 +1494,11 @@ handle_info({route, From, To,
 					 allow -> {true, Attrs, StateData};
 					 deny -> 
 					 		Lang2 = StateData#state.lang,
-							ErrText = <<"You has denied "
-							   "the routing of this stanza.">>,
+							ErrText = <<"Your message has been denied "
+							   "to route.">>,
 							Err = jlib:make_error_reply(Packet,
 								?ERRT_NOT_ACCEPTABLE(Lang2, ErrText)),
-							ejabberd_router:route(To, From, Err),
+              ejabberd_router:route(To, From, Err),
 					 		{false, Attrs, StateData}
 				       end;
 				   _ -> {true, Attrs, StateData}
@@ -1921,12 +1921,13 @@ check_privacy_route(From, StateData, FromRoute, To,
 			      out)
 	of
       deny ->
+    #xmlel{name = Name, attrs = Attrs, children = Els} = Packet},
 	  Lang = StateData#state.lang,
 	  ErrText = <<"Your active privacy list has denied "
 		      "the routing of this stanza.">>,
 	  Err = jlib:make_error_reply(Packet,
 				      ?ERRT_NOT_ACCEPTABLE(Lang, ErrText)),
-	  ejabberd_router:route(From, From, Err),
+	  send_element(StateData, Err),
 	  ok;
       allow -> ejabberd_router:route(FromRoute, To, Packet)
     end.
