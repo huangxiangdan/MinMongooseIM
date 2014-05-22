@@ -393,7 +393,8 @@
 {"You need an x:data capable client to configure mod_irc settings","您需要一个兼容 x:data 的客户端来配置 mod_irc 设置"}.
 {"You need an x:data capable client to configure room","您需要一个兼容 x:data 的客户端来配置房间"}.
 {"You need an x:data capable client to search","您需要一个兼容 x:data 的客户端来搜索"}.
-{"Your active privacy list has denied the routing of this stanza.","你的活跃私聊列表拒绝了在此房间进行路由分发."}.
+{"Your active privacy list has denied the routing of this stanza.","你已屏蔽该联系人，如需恢复聊天，请先解除屏蔽."}.
+{"Your message has been denied to route.","消息发送失败，对方拒绝接收此消息."}.
 {"Your contact offline message queue is full. The message has been discarded.","您的联系人离线消息队列已满. 消息已被丢弃"}.
 {"Your Jabber account was successfully created.","你的 Jabber 帐户已成功创建."}.
 {"Your Jabber account was successfully deleted.","你的 Jabber 帐户已成功删除."}.
