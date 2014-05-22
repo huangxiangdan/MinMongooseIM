@@ -132,7 +132,7 @@
 			   attrs = [{<<"xmlns">>, ?NS_STANZAS}],
 			   children =
 			       [{xmlcdata,
-				 translate:translate("zh", Text)}]}]}).
+				 translate:translate(<<"zh">>, Text)}]}]}).
 
 -define(ERRT_BAD_FORMAT(Lang, Text),
 	?STANZA_ERRORT(<<"406">>, <<"modify">>,
