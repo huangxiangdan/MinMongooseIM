@@ -40,7 +40,7 @@ start() ->
 	    false ->
 		case code:priv_dir(ejabberd) of
 		  {error, _} -> ?MSGS_DIR;
-		  Path -> filename:join([Path, "msgs"])
+		  Path -> Path%filename:join([Path, "msgs"])
 		end;
 	    Path -> Path
 	  end,
