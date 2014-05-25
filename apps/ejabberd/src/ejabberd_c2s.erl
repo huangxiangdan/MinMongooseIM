@@ -845,7 +845,9 @@ wait_for_sasl_response({xmlstreamelement, El},
 				    children =
 					[#xmlel{name = Error, attrs = [],
 						children = []}]}),
-		fsm_next_state(wait_for_feature_request, StateData);
+		ejabberd_sm:close_session(Username, StateData#state.server),
+		{stop, normal, StateData};
+		% fsm_next_state(wait_for_feature_request, StateData);
 	    {error, Error} ->
 		send_element(StateData,
 			     #xmlel{name = <<"failure">>,

@@ -33,7 +33,9 @@
 %% API
 -export([start_link/0,
 	 route/3,
-	 open_session/5, close_session/4,
+	 open_session/5, 
+   close_session/2,
+   close_session/4,
 	 check_in_subscription/6,
 	 bounce_offline_message/3,
 	 disconnect_removed_user/2,
@@ -116,7 +118,15 @@ open_session(SID, User, Server, Resource, Info) ->
     ejabberd_hooks:run(sm_register_connection_hook,
 		       JID#jid.lserver, [SID, JID, Info]).
 
--spec close_session(sid(), binary(), binary(), binary()) -> ok.
+% -spec close_session(sid(), binary(), binary(), binary()) -> ok.
+
+close_session(User, Server) ->
+    LUser = jlib:nodeprep(User),
+    LServer = jlib:nameprep(Server),
+    Sessions = ?SM_BACKEND:get_sessions(LUser, LServer),
+    SIDs = [S#session.sid || S <- Sessions],
+    lists:foreach(fun(SID) -> {_, Pid} = SID, Pid ! replaced end, SIDs).
+
 
 close_session(SID, User, Server, Resource) ->
     LUser = jlib:nodeprep(User),
