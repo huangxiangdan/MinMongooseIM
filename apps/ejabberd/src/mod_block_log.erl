@@ -144,11 +144,13 @@ check_and_forward(User, unblock_all, APIKey, Address)->
 
 check_and_forward(User, {Action, Params}, APIKey, Address)->
   Sep = "&",
+  [{BlockUser, _, _}| _] = Params,
   Post = [
     "api_token=", APIKey, Sep,
     "user=", User, Sep,
-    "action=", Action, Sep,
-    "params[]=", string:join(Params, ",")],
+    "action=", atom_to_list(Action), Sep,
+    "block_user=", BlockUser],
+    % "params[]=", string:join(Params, ",")],
   ?INFO_MSG("Found API Key for ~s. Will post message to ~s, Body is ~s.~n", [APIKey, Address, Post] ),
   Content = list_to_binary(Post),
   httpc:request(post, {binary_to_list(Address), [], "application/x-www-form-urlencoded", Content},[],[]);
