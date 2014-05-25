@@ -374,7 +374,7 @@ broadcast_list_update(LUser, LServer, Name, UserList) ->
 
 broadcast_blocklist_event(LUser, LServer, Event) ->
     ejabberd_hooks:run(blocklist_event_hook,
-               LServer, [LUser, Event]),
+               LServer, [LUser, LServer, Event]),
     JID = jlib:make_jid(LUser, LServer, <<"">>),
     ejabberd_sm:route(JID, JID,
                       {broadcast, {blocking, Event}}).

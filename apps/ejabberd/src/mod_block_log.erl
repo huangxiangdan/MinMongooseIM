@@ -29,7 +29,7 @@
 
 -export([start/2,
    stop/1,
-   save_blocklist_event/2]).
+   save_blocklist_event/3]).
 
 % supervisor
 -export([start_link/2]).
@@ -99,10 +99,9 @@ stop(VHost) ->
 %%====================================================================
 
 
-save_blocklist_event(User, Event) -> 
-    ?INFO_MSG("save_blocklist_event params ~p", [{User, Event}]),
-    VHost = User#jid.lserver,
-    Proc = gen_mod:get_module_proc(VHost, ?PROCNAME),
+save_blocklist_event(User, Server, Event) -> 
+    ?INFO_MSG("save_blocklist_event params ~p", [{User, Server, Event}]),
+    Proc = gen_mod:get_module_proc(Server, ?PROCNAME),
     gen_server:cast(Proc, {addlog, User, Event}).
 
 handle_call(Msg, _From, State) ->
