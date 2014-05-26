@@ -148,7 +148,7 @@ check_and_forward(User, {Action, Params}, APIKey, Address)->
   Post = [
     "api_token=", APIKey, Sep,
     "user=", User, Sep,
-    "action=", atom_to_list(Action), Sep,
+    "block_action=", atom_to_list(Action), Sep,
     "block_user=", BlockUser],
     % "params[]=", string:join(Params, ",")],
   ?INFO_MSG("Found API Key for ~s. Will post message to ~s, Body is ~s.~n", [APIKey, Address, Post] ),
