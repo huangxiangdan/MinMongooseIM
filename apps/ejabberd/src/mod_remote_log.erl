@@ -166,7 +166,8 @@ check_and_forward(_From, _To, #xmlel{name = <<"message">>, attrs = Attrs} = Pack
       From = [FromID, "@", FromServer],
       Body = xml:get_path_s(Packet, [{elem, <<"body">>}, cdata]),
       if
-      (Type == <<"chat">>) and (Body /= <<"">>) ->
+      (Type /= <<"error">>) and (Type /= <<"groupchat">>)
+   and (Type /= <<"headline">>) and (Body /= <<"">>) ->
         ToSB   = xml:get_tag_attr_s(<<"to">>, Packet),
         ToS = binary_to_list(ToSB),
         case ToS of

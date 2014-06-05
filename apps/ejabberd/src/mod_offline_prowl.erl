@@ -68,7 +68,8 @@ send_notice(_From, To, Packet) ->
     Body = xml:get_path_s(Packet, [{elem, <<"body">>}, cdata]),
     % ?INFO_MSG("Packet ~p, Type ~p, Body ~p", [Packet, Type, Body] ),
     if
-	(Type == <<"chat">>) and (Body /= <<"">>) ->
+	(Type /= <<"error">>) and (Type /= <<"groupchat">>)
+   and (Type /= <<"headline">>) and (Body /= <<"">>) ->
     ToSB   = xml:get_tag_attr_s(<<"to">>, Packet),
     ToS = binary_to_list(ToSB),
     case ToS of
