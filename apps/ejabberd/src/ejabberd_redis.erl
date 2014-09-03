@@ -17,8 +17,14 @@
 start_link(Opts) ->
     PoolSize = proplists:get_value(pool_size, Opts, 10),
     RedoOpts = proplists:get_value(worker_config, Opts, []),
+    NewRedoOpts = case RedoOpts of
+        [{host, Host} | Else] -> 
+            [{host, binary_to_list(Host)} | Else];
+        _ ->
+            RedoOpts
+        end,
     ChildMods = [redo, redo_redis_proto, redo_uri],
-    ChildMFA = {redo, start_link, [undefined, RedoOpts]},
+    ChildMFA = {redo, start_link, [undefined, NewRedoOpts]},
 
     supervisor:start_child(ejabberd_sm_backend_sup,
                            {ejabberd_redis_sup,
