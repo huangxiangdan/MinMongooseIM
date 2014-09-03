@@ -10,8 +10,13 @@ listen:
     backlog: 512
     shaper: c2s_shaper
     access: c2s
-auth_method: anonymous
-anonymous_protocol: both
+auth_method: internal
+#anonymous_protocol: both
+sm_backend: 
+  redis:
+    worker_config:
+      host: localhost
+      port: 6379
 shaper:
   normal: 1000
   fast: 50000

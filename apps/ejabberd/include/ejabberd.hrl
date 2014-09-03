@@ -41,6 +41,12 @@
 
 %%-define(DBGFSM, true).
 
+-record(session, {sid :: tuple(),
+                  usr :: {binary(), binary(), binary()},
+                  us :: {binary(), binary()},
+                  priority :: integer(),
+                  info :: list()}).
+
 -record(scram,
 	{storedkey = <<"">>,
          serverkey = <<"">>,

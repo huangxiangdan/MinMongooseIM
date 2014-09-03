@@ -12,7 +12,7 @@
 
 -include("ejabberd.hrl").
 
--record(session, {sid, usr, us, priority, info}).
+% -record(session, {sid, usr, us, priority, info}).
 
 -export([start/1,
          get_sessions/0,

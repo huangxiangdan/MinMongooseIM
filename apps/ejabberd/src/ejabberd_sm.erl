@@ -73,7 +73,7 @@
 
 -include("mod_privacy.hrl").
 
--record(session, {sid, usr, us, priority, info}).
+% -record(session, {sid, usr, us, priority, info}).
 -record(state, {}).
 
 %% default value for the maximum number of user connections
@@ -292,7 +292,10 @@ unregister_iq_handler(Host, XMLNS) ->
 %%--------------------------------------------------------------------
 init([]) ->
     % [{Backend, Opts}] = ejabberd_config:get_global_option(sm_backend, fun(A) -> A end, ejabberd_sm_mnesia),
-    Backend = mnesia,
+    [{Backend, Opts}] = ejabberd_config:get_global_option(sm_backend, fun(A) -> A end),
+    % Opts = [],
+    % ?ERROR_MSG("Option is ~p", [Option]),
+    % Backend = mnesia,
     {Mod, Code} = dynamic_compile:from_string(sm_backend(Backend)),
     code:load_binary(Mod, "ejabberd_sm_backend.erl", Code),
 
@@ -309,7 +312,7 @@ init([]) ->
       end, ?MYHOSTS),
     ejabberd_commands:register_commands(commands()),
 
-    ?SM_BACKEND:start([]),
+    ?SM_BACKEND:start(Opts),
 
     {ok, #state{}}.
 
