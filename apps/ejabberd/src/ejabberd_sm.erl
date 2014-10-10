@@ -740,7 +740,8 @@ connected_users() ->
 	      SUSRs).
 
 connected_users_number() ->
-    length(dirty_get_sessions_list()).
+    % length(dirty_get_sessions_list()).
+    ?SM_BACKEND:unique_count().
 
 user_resources(User, Server) ->
     Resources = get_user_resources(User, Server),
